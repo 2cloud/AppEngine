@@ -1,0 +1,48 @@
+<html>
+  <head>
+      <script src='/_ah/channel/jsapi'></script>
+  </head>
+  <body>
+    <script type='text/javascript'>
+      var connected;
+
+      add_link = function() {
+        var link = encodeURIComponent(document.getElementById('link_input').value);
+        var namespace = encodeURIComponent(document.getElementById('name_input').value);
+        var comment = encodeURIComponent(document.getElementById('comment_input').value);
+        sendMessage('/addlink?link=' + link + '&name={{device_name}}&recipient=' + namespace + '&comment=' + comment)
+      }
+
+      update_links = function(link) {
+        var link_list = document.getElementById('links');
+        link_list.innerHTML += "<li><a href=\""+link.url+"\" target=\"_blank\">"+link.url+"</a> from "+link.from+"</li>\n";
+      }
+
+      sendMessage = function(path) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', path, true);
+        xhr.send();
+      }
+
+      var token = '{{ channel_id }}';
+
+      var channel = new goog.appengine.Channel(token);
+      var socket = channel.open();
+      socket.onopen = function() {
+        window.setTimeout(function() {sendMessage('/connected?name={{device_name}}')}, 100);
+      }
+      socket.onmessage = function(evt) {
+          var o = JSON.parse(evt.data);
+          if (o.link) {
+            update_links(o.link);
+          }
+        }
+    </script>
+    <h1>{{ device }}</h1>
+    URL: <input id='link_input' type='text'><br />
+    Target: <input id="name_input" type="text"><br />
+    Comment: <textarea id="comment_input"></textarea> <input type="button" onclick='add_link()' value="Add" />
+    <ul id='links'>
+    </ul>
+  </body>
+</html>
