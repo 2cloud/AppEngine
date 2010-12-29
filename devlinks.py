@@ -69,6 +69,9 @@ class Maintainer(object):
         obj.user = UserData.all().filter("user =", user).get()
       if 'user' in values:
         obj.user = values['user']
+      if obj.user == None:
+        main = Maintainer("user")
+        obj.user = db.get(main.new())
       memcache.set("user_%s_data" % obj.user.user.user_id(), obj.user)
       obj.name = "Chrome"
       if 'name' in values:
@@ -331,6 +334,8 @@ class AddLinkPage(webapp.RequestHandler):
         memcache.set("device_%s/%s_data" % (user.email(), device.name), device)
         if self.request.get("recipient"):
           address = self.request.get("recipient").replace("%40", "@").replace("%2F", "/")
+          if address.find("/") == -1:
+            address = user.email() + "/" + address
           logging.info(address)
           if address.find(":") != -1:
             instance = address.split(":")[1]
