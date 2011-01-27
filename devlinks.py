@@ -35,6 +35,7 @@ class LinkData(db.Model):
   receiver = db.ReferenceProperty(DeviceData, collection_name="links_received")
   comment = db.TextProperty(required=False)
   instance = db.StringProperty(required=False, default="all")
+  received = db.BooleanProperty(default=False)
 
 class FederatedLinkData(db.Model):
   link = db.ReferenceProperty(LinkData)
@@ -82,6 +83,7 @@ class Maintainer(object):
       obj.default = True
       if 'default' in values:
         obj.default = values['default']
+      result = obj.put()
       memcache.set("device_%s_data" % obj.address, obj)
     elif self.identifier == "link":
       obj.url = "http://code.google.com/p/android2cloud/wiki/Welcome"
@@ -94,6 +96,7 @@ class Maintainer(object):
       obj.receiver = default_device
       if 'receiver' in values:
         obj.receiver = values['receiver']
+      result = obj.put()
     elif self.identifier == "user":
       obj.user = user
       if 'user' in values:
@@ -101,8 +104,9 @@ class Maintainer(object):
       obj.display_name = obj.user.nickname()
       if 'display_name' in values:
         obj.display_name = values['display_name']
+      result = obj.put()
       memcache.set("user_%s_data" % user.user_id(), obj)
-    return obj.put()
+    return result
 
 class DeviceMessager(object):
   """Sends a message to a given device."""
@@ -135,7 +139,7 @@ class DeviceMessager(object):
     message = {'link' : {}, 'meta' : {}}
     message['link']['url'] = link.url
     #message['date'] = link.date
-    link_sender = memcache.get("link_%s_sender" % link.key().id_or_name())
+    link_sender = memcache.get("link_%s_sender" % link.key().id())
     if link_sender == None:
       link_sender = link.sender
       memcache.set("link_%s_sender" % link.key().id_or_name(), link_sender)
@@ -191,7 +195,7 @@ class UserMessager(object):
 class ConnectedPage(webapp.RequestHandler):
   """This page is requested when the client is successfully connected to the channel."""
 
-  def post(self, name=False, since_id=False):
+  def post(self, name=False):
     try:
       user = oauth.get_current_user()
     except:
@@ -238,30 +242,21 @@ class ConnectedPage(webapp.RequestHandler):
       memcache.set("user_%s_device" % user.user_id(), device)
       memcache.set("device_%s_data" % device.address, device)
       logging.info("device: "+device.address)
-      if not since_id:
-        last_links = device.links_received.order("date").fetch(1000)
-        if len(last_links) != 0:
-          last_link = last_links[0]
-        else:
-          last_link = False
-      else:
-        last_link = db.get(db.Key.from_path("LinkData", since_id))
-        if last_link != None:
-          last_links = device.links_received.order("-date").filter("date >", last_link.date).fetch(1000)
-      if not last_link:
-        last_link = LinkData()
-        last_link.sender = device
-        last_link.receiver = device
-        last_link.url = "http://code.google.com/p/android2cloud/wiki/Welcome"
-        last_link.put()
-        last_links = [last_link]
-      logging.info("last_link: "+last_link.url)
-      meta = {'since_id' : {'id' : since_id, 'override' : False}}
+      last_links = device.links_received.order("-date").filter("received =", False).fetch(1000)
       messager = DeviceMessager(device.address)
-      logging.info("Sending "+last_link.url+" to "+messager.receiver.address)
       self.response.out.write(device.address)
       #latest_links = device.links_received.order("-date").filter("date >", last_link.data).fetch(1000), meta)
-      messager.SendLinks(last_links, meta)
+      if last_links != None:
+        messager.SendLinks(last_links, {})
+      
+class UpgradePage(webapp.RequestHandler):
+  """Prompt users to upgrade."""
+  
+  def get(self, action):
+    self.response.out.write("You're using outdated software. Please upgrade your client.")
+    
+  def post(self, action):
+    self.response.out.write("You're using outdated software. Please upgrade your client.")
 
 class MainPage(webapp.RequestHandler):
   """The main UI page, renders the 'index.html' template."""
@@ -312,26 +307,38 @@ class AddLinkPage(webapp.RequestHandler):
       user = oauth.get_current_user()
     except:
       user = users.get_current_user()
+    if not user:
+      self.response.out.write("Had a problem logging you in. Please log out and log back in.")
     if user:
+      logging.info("User "+user.email())
       user_data = memcache.get("user_%s_data" % user.user_id())
       if user_data == None:
+        logging.info("328")
         user_data = UserData.all().filter("user =", user).get()
         memcache.set("user_%s_data" % user.user_id(), user_data)
+      logging.info("user_data check")
+      if not user_data:
+        main = Maintainer("user")
+        user_data = db.get(main.new({}))
       if user_data:
+        logging.info("user_data_found")
         instance = "all"
         if self.request.get("name"):
+          logging.info("335")
           device = memcache.get("device_%s/%s_data" % (user.email(), self.request.get("name")))
           if device == None:
             device = user_data.devices.filter("name =", self.request.get("name")).get()
           if not device:
             main = Maintainer("device")
             device = db.get(main.new({'name' : self.request.get("name"), 'default' : False}))
+            logging.info("342")
         else:
           device = memcache.get("user_%s_device" % user.user_id())
           if device == None:
             device = user_data.devices.order("default").get()
             memcache.set("user_%s_device" % user.user_id(), device)
         memcache.set("device_%s/%s_data" % (user.email(), device.name), device)
+        logging.info(device.name)
         if self.request.get("recipient"):
           address = self.request.get("recipient").replace("%40", "@").replace("%2F", "/")
           if address.find("/") == -1:
@@ -348,7 +355,7 @@ class AddLinkPage(webapp.RequestHandler):
           if not recipient:
             main = Maintainer("device")
             logging.info("338")
-            recipient = main.new({'name' : address, 'default' : False})
+            recipient = db.get(main.new({'name' : address, 'default' : False}))
           memcache.set("device_%s_data" % recipient.address, recipient)
         else:
           recipient = device
@@ -362,11 +369,9 @@ class AddLinkPage(webapp.RequestHandler):
         link.put()
         memcache.set("link_%s_sender" % link.key().id_or_name(), link.sender)
         messager = DeviceMessager(recipient.address)
-        if not self.request.get("recipient"):
-          messager = UserMessager(user.email())
-        else:
-          logging.info("Sending "+link.url+" to "+messager.receiver.address)
+        logging.info("Sending "+link.url+" to "+messager.receiver.address)
         messager.SendLink(link)
+        self.response.out.write("Sent "+link.url+" to the cloud.")
 
 class TokenPage(webapp.RequestHandler):
   """An page users POST to to receive a channel token."""
@@ -431,15 +436,45 @@ class ConfigHandler(webapp.RequestHandler):
 				'requestURL' : '_ah/OAuthGetRequestToken'}
 	self.response.out.write(simplejson.dumps(settings))
 
+class MarkAsReadHandler(webapp.RequestHandler):
+  def post(self, json=False):
+    json = self.request.get('links')
+    if json != False:
+      sent_data = simplejson.loads(json)
+      try:
+        sent_data['links']
+      except KeyError:
+        sent_data['links'] = None
+        
+      try:
+        sent_data['link']
+      except KeyError:
+        sent_data['link'] = None
+    
+    if sent_data['link'] is not None:
+      link_object = LinkData.get_by_id(int(sent_data['link']['id']))
+      link_object.received = True
+      link_object.put()
+    
+    if sent_data['links'] is not None:
+      for link in sent_data['links']:
+        logging.info(link)
+        logging.info(sent_data['links'][link])
+        link_object = LinkData.get_by_id(int(sent_data['links'][link]['link']['id']))
+        link_object.received = True
+        link_object.put()
+
 application = webapp.WSGIApplication([
     ('/', MainPage),
     ('/addlink', AddLinkPage),
+    ('/markread', MarkAsReadHandler),
     ('/connected', ConnectedPage),
     ('/connected/([^/]*)', ConnectedPage),
     ('/connected/([^/]*)/([^/]*)', ConnectedPage),
     ('/getToken', TokenPage),
     ('/getToken/(.*)', TokenPage),
-    ('/config', ConfigHandler)
+    ('/config', ConfigHandler),
+    ('/links/(.*)', UpgradePage)
     ], debug=True)
 
 
