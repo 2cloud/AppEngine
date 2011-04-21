@@ -123,7 +123,12 @@ class DeviceMessager(object):
     advanced applications could create more finely-grained channels to support multiple
     clients per device."""
     logging.info("Create channel: '" + self.receiver.address+"'")
-    return channel.create_channel(self.receiver.address)
+    token = memcache.get("token_%s" % self.receiver.address)
+    if token is None:
+      logging.info("Memcache failed. Creating token.")
+      token = channel.create_channel(self.receiver.address)
+      memcache.set("token_%s" % self.receiver.address, token, time=7200)
+    return token
     #logging.info("Create channel: " + users.get_current_user().email() + "/Chrome")
     #return channel.create_channel(users.get_current_user().email() + "/Chrome")
 
@@ -250,13 +255,25 @@ class ConnectedPage(webapp.RequestHandler):
         messager.SendLinks(last_links, {})
       
 class UpgradePage(webapp.RequestHandler):
-  """Prompt users to upgrade."""
-  
-  def get(self, action):
-    self.response.out.write("You're using outdated software. Please upgrade your client.")
+    """Prompt users to upgrade."""
+
+    def get(self, action):
+        try:
+            user = oauth.get_current_user()
+        except:
+            pass
+        else:
+            logging.info(user)
+        self.response.out.write("You're using outdated software. Please upgrade your client.")
     
-  def post(self, action):
-    self.response.out.write("You're using outdated software. Please upgrade your client.")
+    def post(self, action):
+        try:
+            user = oauth.get_current_user()
+        except:
+            pass
+        else:
+            logging.info(user)
+        self.response.out.write("You're using outdated software. Please upgrade your client.")
 
 class MainPage(webapp.RequestHandler):
   """The main UI page, renders the 'index.html' template."""
@@ -436,6 +453,17 @@ class ConfigHandler(webapp.RequestHandler):
 				'requestURL' : '_ah/OAuthGetRequestToken'}
 	self.response.out.write(simplejson.dumps(settings))
 
+class NewMarkAsReadHandler(webapp.RequestHandler):
+  def post(self, json=False):
+    json = self.request.get('links')
+    if json != False:
+      sent_data = simplejson.loads(json)
+      for link in sent_data:
+        logging.info(link)
+        link_object = LinkData.get_by_id(int(link))
+        link_object.received = True
+        link_object.put()
+
 class MarkAsReadHandler(webapp.RequestHandler):
   def post(self, json=False):
     json = self.request.get('links')
@@ -464,10 +492,12 @@ class MarkAsReadHandler(webapp.RequestHandler):
         link_object.received = True
         link_object.put()
 
+
 application = webapp.WSGIApplication([
     ('/', MainPage),
     ('/addlink', AddLinkPage),
     ('/markread', MarkAsReadHandler),
+    ('/marklinkread', NewMarkAsReadHandler),
     ('/connected', ConnectedPage),
     ('/connected/([^/]*)', ConnectedPage),
     ('/connected/([^/]*)/([^/]*)', ConnectedPage),
