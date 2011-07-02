@@ -119,7 +119,7 @@ class LinkData(db.Model):
     self.put()
 
   def getUnread(device, count=1000):
-    return device.links_received.filter("received =", False).fetch(count)
+    return device.links_received.filter("received =", False).order("-date").fetch(count)
 
   def getByAccount(user, count=1000):
-    return LinkData.all().filter("receiver IN", user.devices).fetch(count)
+    return LinkData.all().filter("receiver IN", user.devices).order("-date").fetch(count)
