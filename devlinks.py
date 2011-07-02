@@ -23,11 +23,6 @@ class DeviceData(db.Model):
   address = db.StringProperty()
   default = db.BooleanProperty()
 
-class FriendData(db.Model):
-  requester = db.ReferenceProperty(UserData, collection_name="friends_requested")
-  requested = db.ReferenceProperty(UserData, collection_name="friend_requests")
-  approved = db.BooleanProperty()
-
 class LinkData(db.Model):
   url = db.StringProperty()
   date = db.DateTimeProperty(auto_now_add=True)
@@ -37,14 +32,6 @@ class LinkData(db.Model):
   instance = db.StringProperty(required=False, default="all")
   received = db.BooleanProperty(default=False)
 
-class FederatedLinkData(db.Model):
-  link = db.ReferenceProperty(LinkData)
-  sending_server = db.StringProperty()
-  receiving_server = db.StringProperty()
-  sent = db.BooleanProperty()
-  received = db.BooleanProperty()
-  attempts = db.IntegerProperty()
-
 class Maintainer(object):
   """Handles mundane adding/deletion/editing of models"""
 
@@ -52,7 +39,6 @@ class Maintainer(object):
     models = {
       "device" : DeviceData,
       "link" : LinkData,
-      "friend" : FriendData,
       "user" : UserData
     }
     self.identifier = identifier
@@ -123,12 +109,14 @@ class DeviceMessager(object):
     advanced applications could create more finely-grained channels to support multiple
     clients per device."""
     logging.info("Create channel: '" + self.receiver.address+"'")
-    token = memcache.get("token_%s" % self.receiver.address)
-    if token is None:
+    response = {'cached': True}
+    response['token'] = memcache.get("token_%s" % self.receiver.address)
+    if response['token'] is None:
       logging.info("Memcache failed. Creating token.")
-      token = channel.create_channel(self.receiver.address)
-      memcache.set("token_%s" % self.receiver.address, token, time=7200)
-    return token
+      response['token'] = channel.create_channel(self.receiver.address)
+      response['code'] = False
+      memcache.set("token_%s" % self.receiver.address, response['token'], time=7200)
+    return response
     #logging.info("Create channel: " + users.get_current_user().email() + "/Chrome")
     #return channel.create_channel(users.get_current_user().email() + "/Chrome")
 
@@ -387,7 +375,7 @@ class AddLinkPage(webapp.RequestHandler):
         memcache.set("link_%s_sender" % link.key().id_or_name(), link.sender)
         messager = DeviceMessager(recipient.address)
         logging.info("Sending "+link.url+" to "+messager.receiver.address)
-        messager.SendLink(link)
+        messager.SendLinks([link])
         self.response.out.write("Sent "+link.url+" to the cloud.")
 
 class TokenPage(webapp.RequestHandler):
@@ -398,19 +386,19 @@ class TokenPage(webapp.RequestHandler):
     try:
       user = oauth.get_current_user()
     except oauth.InvalidOAuthTokenError, e:
-      self.response.out.write("InvalidOAuthTokenError: %s" % e)
+      #self.response.out.write("InvalidOAuthTokenError: %s" % e)
       user = users.get_current_user()
     except oauth.InvalidOAuthParametersError, e:
-      self.response.out.write("InvalidOAuthParametersError: %s" % e.message)
+      #self.response.out.write("InvalidOAuthParametersError: %s" % e.message)
       user = users.get_current_user()
     except oauth.InvalidOAuthRequestError, e:
-      self.response.out.write("InvalidOAuthRequestError: %s" % e)
+      #self.response.out.write("InvalidOAuthRequestError: %s" % e)
       user = users.get_current_user()
     except oauth.OAuthServiceFailureError, e:
-      self.response.out.write("InvalidOAuthServiceError: %s" % e)
+      #self.response.out.write("InvalidOAuthServiceError: %s" % e)
       user = users.get_current_user()
     except Exception, e:
-      self.response.out.write("Exception: %s" % e)
+      #self.response.out.write("Exception: %s" % e)
       user = users.get_current_user()
     override = {}
     if name:
@@ -439,9 +427,20 @@ class TokenPage(webapp.RequestHandler):
       messager = DeviceMessager(device.address)
       logging.info(messager.receiver.address)
       channel_token = messager.CreateChannelToken()
-      self.response.out.write(channel_token)
+      response = {
+          'token': channel_token['token']
+      }
+      if channel_token['cached']:
+        response['code'] = 304
+      else:
+        response['code'] = 200
+      self.response.out.write(simplejson.dumps(response))
     else:
-      self.response.out.write("Error: Not logged in.")
+      response = {
+          'code': 401,
+          'message': 'Not logged in.'
+      }
+      self.response.out.write(simplejson.dumps(response))
 
 class ConfigHandler(webapp.RequestHandler):
   def get(self):
