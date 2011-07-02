@@ -47,7 +47,8 @@ class UserData(db.Model):
       memcache.set("user_%s_devices" % self.user.user_id(), devices)
     return devices
 
-  def get(account):
+  @staticmethod
+  def getUser(account):
     user = memcache.get("user_%s_data", account.user_id())
     if user == None:
       user = UserData.all().filter("user =", account).get()
@@ -92,7 +93,8 @@ class DeviceData(db.Model):
     self.put()
     memcache.set("device_%s_data" % self.address, self)
 
-  def get(address):
+  @staticmethod
+  def getDevice(address):
     device = memcache.get("device_%s_data" % address)
     if device == None:
       device = DeviceData.all().filter("address =", address).get()
@@ -138,15 +140,18 @@ class LinkData(db.Model):
     self.received = True
     self.save()
 
-  def get(id_or_name):
+  @staticmethod
+  def getLink(id_or_name):
     link = LinkData.get_by_id(int(id_or_name))
     if link == None:
       raise LinkDoesNotExistError, id_or_name
     else:
       return link
 
+  @staticmethod
   def getUnread(device, count=1000):
     return device.links_received.filter("received =", False).order("-date").fetch(count)
 
+  @staticmethod
   def getByAccount(user, count=1000):
     return LinkData.all().filter("receiver IN", user.devices).order("-date").fetch(count)

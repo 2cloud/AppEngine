@@ -4,6 +4,7 @@ import os
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
+from google.appengine.api import users
 
 import auth, models, channels
 
@@ -15,14 +16,14 @@ class ConnectedPage(webapp.RequestHandler):
     device = None
     if user:
       try:
-        user_data = models.UserData.get(user)
+        user_data = models.UserData.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData({'user': user}).save()
       try:
-        device = models.DeviceData.get("device_%s/%s_data" % (user.email(), name))
+        device = models.DeviceData.getDevice("device_%s/%s_data" % (user.email(), name))
       except:
         device = models.DeviceData({'user': user_data, 'name': name}).save()
-      last_links = models.LinkData.getUnread(device)
+      last_links = models.LinkData.getLinkUnread(device)
       channel = channels.Channel(device.address)
       for link in last_links:
         channel.queueLink(link)
@@ -35,11 +36,11 @@ class MainPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = UserData.get(user)
+        user_data = models.UserData.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData({'user': user}).save()
       try:
-        device = models.DeviceData.get("%s/Web" % user.email())
+        device = models.DeviceData.getDevice("%s/Web" % user.email())
       except models.DeviceDoesNotExistError:
         device = models.DeviceData({"user": user_data, "name": "Web"}).save()
       channel = channels.Channel(device.address)
@@ -59,16 +60,16 @@ class AddLinkPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = models.UserData.get(user)
+        user_data = models.UserData.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData({'user': user})
       name = self.request.get('name')
       if not name:
         name = "Chrome"
       try:
-        device = models.DeviceData.get("device_%s/%s_data" % (user.email(), name))
+        device = models.DeviceData.getDevice("device_%s/%s_data" % (user.email(), name))
       except models.DeviceDoesNotExistError:
-        device = models.DeviceData({'name': name, 'user': user_data)
+        device = models.DeviceData({'name': name, 'user': user_data})
       receiver = self.request.get("receiver")
       if not receiver:
         receiver = device
@@ -87,13 +88,13 @@ class TokenPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = models.UserData.get(user)
+        user_data = models.UserData.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData({'user': user})
       if not name:
         name = "Chrome"
       try:
-        device = models.DeviceData.get("%s/%s" % (user.email(), name))
+        device = models.DeviceData.getDevice("%s/%s" % (user.email(), name))
       except models.DeviceDoesNotExistError:
         device = models.DeviceData({'user': user_data, 'name': name})
       channel = channels.Channel(device.address)
@@ -118,7 +119,7 @@ class MarkAsReadHandler(webapp.RequestHandler):
     if json != False:
       sent_data = simplejson.loads(json)
       for link in sent_data:
-        link_data = models.LinkData.get(link)
+        link_data = models.LinkData.getLink(link)
         link_data.markRead()
 
 application = webapp.WSGIApplication([

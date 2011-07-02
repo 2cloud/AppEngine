@@ -6,3 +6,4 @@ def getCurrentUser():
     user = oauth.get_current_user()
   except:
     user = users.get_current_user()
+  return user
