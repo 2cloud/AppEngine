@@ -9,7 +9,7 @@ class UserDoesNotExistError(Exception):
     self.account = account
 
   def __str__(self):
-    return "UserDoesNotExistError: No account found for %s" % account.email()
+    return "UserDoesNotExistError: No account found for %s" % self.account.email()
 
 class UserData(db.Model):
   """All the data we store with a given user."""
@@ -36,7 +36,11 @@ class UserData(db.Model):
   def updateLastSeen(self):
     self.last_seen = datetime.now()
 
-  def getUser(account):
+  def save(self):
+    self.put()
+    memcache.set("user_%s_data" % self.user.user_id(), self)
+
+  def get(account):
     user = memcache.get("user_%s_data", account.user_id())
     if user == None:
       user = UserData.all().filter("user =", account).get()
@@ -45,6 +49,15 @@ class UserData(db.Model):
       else:
         memcache.set("user_%s_data" % account.user_id(), user)
     return user
+
+class DeviceDoesNotExistError(Exception):
+  address = None
+
+  def __init__(self, address):
+    self.address = address
+
+  def __str__(self):
+    return "DeviceDoesNotExistError: No device found for %s" % self.address
 
 class DeviceData(db.Model):
   user = db.ReferenceProperty(UserData, collection_name="devices")
@@ -58,7 +71,7 @@ class DeviceData(db.Model):
       else:
         account = auth.getCurrentUser()
         try:
-          self.user = UserData.getUser(account)
+          self.user = UserData.get(account)
         except UserDoesNotExistError, user:
           self.user = UserData({'user': user}).put()
       if 'name' in values:
@@ -67,6 +80,20 @@ class DeviceData(db.Model):
         self.address = values['address']
       else:
         self.address = "%s/%s", (self.user.user.email(), self.name)
+
+  def save(self):
+    self.put()
+    memcache.set("device_%s_data" % self.address, self)
+
+  def get(address):
+    device = memcache.get("device_%s_data" % address)
+    if device == None:
+      device = DeviceData.all().filter("address =", address).get()
+      if device == None:
+        raise DeviceDoesNotExistError, device
+      else:
+        memcache.set("device_%s_data" % address, device)
+    return device
 
 class LinkData(db.Model):
   url = db.StringProperty()
@@ -87,3 +114,12 @@ class LinkData(db.Model):
         self.receiver = values['receiver']
       if 'received' in values:
         self.received = values['received']
+
+  def save(self):
+    self.put()
+
+  def getUnread(device, count=1000):
+    return device.links_received.filter("received =", False).fetch(count)
+
+  def getByAccount(user, count=1000):
+    return LinkData.all().filter("receiver IN", user.devices).fetch(count)
