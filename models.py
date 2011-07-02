@@ -1,4 +1,5 @@
 from google.appengine.ext import db
+from google.appengine.api import memcache
 from datetime import datetime
 
 class UserData(db.Model):
