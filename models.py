@@ -102,6 +102,15 @@ class DeviceData(db.Model):
         memcache.set("device_%s_data" % address, device)
     return device
 
+class LinkDoesNotExistError(Exception):
+  id_or_name = None
+
+  def __init__(self, id_or_name):
+    self.id_or_name = id_or_name
+
+  def __str__(self):
+    return "LinkDoesNotExistError: No link found for %s" % self.id_or_name
+
 class LinkData(db.Model):
   url = db.StringProperty()
   date = db.DateTimeProperty(auto_now_add=True)
@@ -124,6 +133,17 @@ class LinkData(db.Model):
 
   def save(self):
     self.put()
+
+  def markRead(self):
+    self.received = True
+    self.save()
+
+  def get(id_or_name):
+    link = LinkData.get_by_id(int(id_or_name))
+    if link == None:
+      raise LinkDoesNotExistError, id_or_name
+    else:
+      return link
 
   def getUnread(device, count=1000):
     return device.links_received.filter("received =", False).order("-date").fetch(count)
