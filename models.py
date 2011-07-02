@@ -73,7 +73,7 @@ class DeviceData(db.Model):
         try:
           self.user = UserData.get(account)
         except UserDoesNotExistError, user:
-          self.user = UserData({'user': user}).put()
+          self.user = UserData({'user': user}).save()
       if 'name' in values:
         self.name = values['name']
       if 'address' in values:
