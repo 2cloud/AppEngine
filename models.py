@@ -40,6 +40,13 @@ class UserData(db.Model):
     self.put()
     memcache.set("user_%s_data" % self.user.user_id(), self)
 
+  def getDevices(self):
+    devices = memcache.get("user_%s_devices", self.user.user_id())
+    if devices == None:
+      devices = self.user.devices.fetch(1000)
+      memcache.set("user_%s_devices" % self.user.user_id(), devices)
+    return devices
+
   def get(account):
     user = memcache.get("user_%s_data", account.user_id())
     if user == None:
