@@ -2,6 +2,15 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from datetime import datetime
 
+class UserDoesNotExistError(Exception):
+  account = None
+
+  def __init__(self, account):
+    self.account = account
+
+  def __str__(self):
+    return "UserDoesNotExistError: No account found for %s" % account.email()
+
 class UserData(db.Model):
   """All the data we store with a given user."""
   user = db.UserProperty()
