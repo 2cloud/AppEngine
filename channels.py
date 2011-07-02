@@ -7,13 +7,14 @@ class Channel():
   cached = True
   message = {}
 
-  def __init__(self, address):
+  def __init__(self, address, generate=False):
    self.address = address
-   self.token = memcache.get("token_%s" % self.address)
-   if self.token is None:
-     self.token = channel.create_channel(self.address)
-     self.cached = False
-     memcache.set("token_%s" % self.address, self.token, time=7200)
+   if generate:
+     self.token = memcache.get("token_%s" % self.address)
+     if self.token is None:
+       self.token = channel.create_channel(self.address)
+       self.cached = False
+       memcache.set("token_%s" % self.address, self.token, time=7200)
 
   def send(self):
     channel.send_message(self.address, simplejson.dumps(self.message))
