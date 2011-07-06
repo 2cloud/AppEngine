@@ -2,6 +2,8 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from datetime import datetime
 
+import logging
+
 class UserDoesNotExistError(Exception):
   account = None
 
@@ -14,24 +16,8 @@ class UserDoesNotExistError(Exception):
 class UserData(db.Model):
   """All the data we store with a given user."""
   user = db.UserProperty()
-  display_name = db.StringProperty()
   joined = db.DateTimeProperty(auto_now_add=True)
   last_seen = db.DateTimeProperty(auto_now_add=True)
-  
-  def __init__(self, values):
-    if values:
-      if 'user' in values:
-        self.user = values['user']
-      else:
-        self.user = auth.getCurrentUser()
-      if 'display_name' in values:
-        self.display_name = values['display_name']
-      else:
-        self.display_name = self.user.nickname()
-      if 'joined' in values:
-        self.joined = values['joined']
-      if 'last_seen' in values:
-        self.last_seen = values['last_seen']
 
   def updateLastSeen(self):
     self.last_seen = datetime.now()
@@ -39,24 +25,14 @@ class UserData(db.Model):
   def save(self):
     self.put()
     memcache.set("user_%s_data" % self.user.user_id(), self)
+    return self
 
   def getDevices(self):
     devices = memcache.get("user_%s_devices", self.user.user_id())
     if devices == None:
-      devices = self.user.devices.fetch(1000)
+      devices = self.devices.fetch(1000)
       memcache.set("user_%s_devices" % self.user.user_id(), devices)
     return devices
-
-  @staticmethod
-  def getUser(account):
-    user = memcache.get("user_%s_data", account.user_id())
-    if user == None:
-      user = UserData.all().filter("user =", account).get()
-      if user == None:
-        raise UserDoesNotExistError, user
-      else:
-        memcache.set("user_%s_data" % account.user_id(), user)
-    return user
 
 class DeviceDoesNotExistError(Exception):
   address = None
@@ -72,37 +48,12 @@ class DeviceData(db.Model):
   name = db.StringProperty()
   address = db.StringProperty()
   
-  def __init__(self, values):
-    if values:
-      if 'user' in values:
-        self.user = values['user']
-      else:
-        account = auth.getCurrentUser()
-        try:
-          self.user = UserData.get(account)
-        except UserDoesNotExistError, user:
-          self.user = UserData({'user': user}).save()
-      if 'name' in values:
-        self.name = values['name']
-      if 'address' in values:
-        self.address = values['address']
-      else:
-        self.address = "%s/%s", (self.user.user.email(), self.name)
-
   def save(self):
+    if self.address == None:
+      self.address = "%s/%s" % (self.user.user.email(), self.name)
     self.put()
     memcache.set("device_%s_data" % self.address, self)
-
-  @staticmethod
-  def getDevice(address):
-    device = memcache.get("device_%s_data" % address)
-    if device == None:
-      device = DeviceData.all().filter("address =", address).get()
-      if device == None:
-        raise DeviceDoesNotExistError, device
-      else:
-        memcache.set("device_%s_data" % address, device)
-    return device
+    return self
 
 class LinkDoesNotExistError(Exception):
   id_or_name = None
@@ -120,38 +71,43 @@ class LinkData(db.Model):
   receiver = db.ReferenceProperty(DeviceData, collection_name="links_received")
   received = db.BooleanProperty(default=False)
 
-  def __init__(self, values):
-    if values:
-      if 'url' in values:
-        self.url = values['url']
-      if 'date' in values:
-        self.date = values['date']
-      if 'sender' in values:
-        self.sender = values['sender']
-      if 'receiver' in values:
-        self.receiver = values['receiver']
-      if 'received' in values:
-        self.received = values['received']
-
   def save(self):
     self.put()
+    return self
 
   def markRead(self):
     self.received = True
     self.save()
 
-  @staticmethod
-  def getLink(id_or_name):
-    link = LinkData.get_by_id(int(id_or_name))
-    if link == None:
-      raise LinkDoesNotExistError, id_or_name
+def getUser(account):
+  user = memcache.get("user_%s_data", account.user_id())
+  if user == None:
+    user = UserData.all().filter("user =", account).get()
+    if user == None:
+      raise UserDoesNotExistError(user)
     else:
-      return link
+      memcache.set("user_%s_data" % account.user_id(), user)
+  return user
 
-  @staticmethod
-  def getUnread(device, count=1000):
-    return device.links_received.filter("received =", False).order("-date").fetch(count)
+def getDevice(address):
+  device = memcache.get("device_%s_data" % address)
+  if device == None:
+    device = DeviceData.all().filter("address =", address).get()
+    if device == None:
+      raise DeviceDoesNotExistError(device)
+    else:
+      memcache.set("device_%s_data" % address, device)
+  return device
 
-  @staticmethod
-  def getByAccount(user, count=1000):
-    return LinkData.all().filter("receiver IN", user.devices).order("-date").fetch(count)
+def getLink(id_or_name):
+  link = LinkData.get_by_id(int(id_or_name))
+  if link == None:
+    raise LinkDoesNotExistError(id_or_name)
+  else:
+    return link
+
+def getUnreadLinks(device, count=1000):
+  return device.links_received.filter("received =", False).order("-date").fetch(count)
+
+def getLinksByAccount(user, count=1000):
+  return LinkData.all().filter("receiver IN", user.devices).order("-date").fetch(count)

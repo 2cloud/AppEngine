@@ -16,14 +16,14 @@ class ConnectedPage(webapp.RequestHandler):
     device = None
     if user:
       try:
-        user_data = models.UserData.getUser(user)
+        user_data = models.getUser(user)
       except models.UserDoesNotExistError:
-        user_data = models.UserData({'user': user}).save()
+        user_data = models.UserData(user = user).save()
       try:
-        device = models.DeviceData.getDevice("device_%s/%s_data" % (user.email(), name))
+        device = models.getDevice("device_%s/%s_data" % (user.email(), name))
       except:
-        device = models.DeviceData({'user': user_data, 'name': name}).save()
-      last_links = models.LinkData.getLinkUnread(device)
+        device = models.DeviceData(user = user_data, name = name).save()
+      last_links = models.getUnreadLinks(device)
       channel = channels.Channel(device.address)
       for link in last_links:
         channel.queueLink(link)
@@ -36,19 +36,20 @@ class MainPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = models.UserData.getUser(user)
+        user_data = models.getUser(user)
       except models.UserDoesNotExistError:
-        user_data = models.UserData({'user': user}).save()
+        user_data = models.UserData(user = user).save()
       try:
-        device = models.DeviceData.getDevice("%s/Web" % user.email())
+        device = models.getDevice("%s/Web" % user.email())
       except models.DeviceDoesNotExistError:
-        device = models.DeviceData({"user": user_data, "name": "Web"}).save()
+        logging.info("making device")
+        device = models.DeviceData(user = user_data, name = "Web").save()
       channel = channels.Channel(device.address)
       template_values = {
         'channel_id': channel.token,
         'device' : device.address,
         'device_name' : device.name,
-        'devices': user.getDevices()
+        'devices': user_data.getDevices()
       }
       path = os.path.join(os.path.dirname(__file__), 'devlinks_index.html')
       self.response.out.write(template.render(path, template_values))
@@ -60,23 +61,25 @@ class AddLinkPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = models.UserData.getUser(user)
+        user_data = models.getUser(user)
       except models.UserDoesNotExistError:
-        user_data = models.UserData({'user': user})
+        user_data = models.UserData(user = user).save()
       name = self.request.get('name')
       if not name:
         name = "Chrome"
       try:
-        device = models.DeviceData.getDevice("device_%s/%s_data" % (user.email(), name))
+        device = models.getDevice("%s/%s" % (user.email(), name))
       except models.DeviceDoesNotExistError:
-        device = models.DeviceData({'name': name, 'user': user_data})
-      receiver = self.request.get("receiver")
-      if not receiver:
+        device = models.DeviceData(name = name, user = user_data).save()
+      receiver = None
+      if self.request.get("receiver"):
+        try:
+          receiver = models.getDevice("%s/%s" % (user.email(), self.request.get("receiver")))
+        except models.DeviceDoesNotExistError:
+          receiver = models.DeviceData(name = self.request.get("receiver"), user = user_data).save()
+      if receiver == None:
         receiver = device
-      link = LinkData({
-        'url': self.request.get('link'),
-        'sender': device,
-        'receiver': receiver}).save()
+      link = models.LinkData(url=self.request.get('link'), sender=device, receiver=receiver).save()
       channel = channels.Channel(receiver.address, False)
       channel.sendLink(link)
       self.response.out.write("Sent "+link.url+" to the cloud.")
@@ -88,15 +91,15 @@ class TokenPage(webapp.RequestHandler):
     user = auth.getCurrentUser()
     if user:
       try:
-        user_data = models.UserData.getUser(user)
+        user_data = models.getUser(user)
       except models.UserDoesNotExistError:
-        user_data = models.UserData({'user': user})
+        user_data = models.UserData(user = user).save()
       if not name:
         name = "Chrome"
       try:
-        device = models.DeviceData.getDevice("%s/%s" % (user.email(), name))
+        device = models.getDevice("%s/%s" % (user.email(), name))
       except models.DeviceDoesNotExistError:
-        device = models.DeviceData({'user': user_data, 'name': name})
+        device = models.DeviceData(user = user_data, name = name).save()
       channel = channels.Channel(device.address)
       response = {
           'token': channel.token
@@ -119,7 +122,7 @@ class MarkAsReadHandler(webapp.RequestHandler):
     if json != False:
       sent_data = simplejson.loads(json)
       for link in sent_data:
-        link_data = models.LinkData.getLink(link)
+        link_data = models.getLink(link)
         link_data.markRead()
 
 application = webapp.WSGIApplication([

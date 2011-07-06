@@ -7,7 +7,7 @@ class Channel():
   cached = True
   message = {}
 
-  def __init__(self, address, generate=False):
+  def __init__(self, address, generate=True):
    self.address = address
    if generate:
      self.token = memcache.get("token_%s" % self.address)
@@ -26,7 +26,7 @@ class Channel():
     link_message['id'] = link.key().id_or_name()
     link_message['url'] = link.url
     link_message['sender'] = link.sender.address
-    self.message['links'].push(link_message)
+    self.message['links'].append(link_message)
 
   def sendLink(self, link):
     self.queueLink(link)

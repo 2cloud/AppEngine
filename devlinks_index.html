@@ -10,7 +10,7 @@
         var link = encodeURIComponent(document.getElementById('link_input').value);
         var namespace = encodeURIComponent(document.getElementById('name_input').value);
         var comment = encodeURIComponent(document.getElementById('comment_input').value);
-        sendMessage('/addlink?link=' + link + '&name={{device_name}}&recipient=' + namespace + '&comment=' + comment)
+        sendMessage('/links/add?link=' + link + '&name={{device_name}}&recipient=' + namespace)
       }
 
       update_links = function(link) {
@@ -29,12 +29,12 @@
       var channel = new goog.appengine.Channel(token);
       var socket = channel.open();
       socket.onopen = function() {
-        window.setTimeout(function() {sendMessage('/connected?name={{device_name}}')}, 100);
+        window.setTimeout(function() {sendMessage('/channels/connected?name={{device_name}}')}, 100);
       }
       socket.onmessage = function(evt) {
           var o = JSON.parse(evt.data);
-          if (o.link) {
-            update_links(o.link);
+          if (o.links) {
+            update_links(o.links[0]);
           }
         }
     </script>
