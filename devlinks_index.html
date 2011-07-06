@@ -10,7 +10,7 @@
         var link = encodeURIComponent(document.getElementById('link_input').value);
         var namespace = encodeURIComponent(document.getElementById('name_input').value);
         var comment = encodeURIComponent(document.getElementById('comment_input').value);
-        sendMessage('/links/add?link=' + link + '&name={{device_name}}&recipient=' + namespace)
+        sendMessage('/links/add?link=' + link + '&name={{device_name}}&receiver=' + namespace)
       }
 
       update_links = function(link) {
