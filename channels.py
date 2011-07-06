@@ -1,6 +1,8 @@
 from django.utils import simplejson
 from google.appengine.api import channel, memcache
 
+import models
+
 class Channel():
   token = None
   address = None
@@ -12,8 +14,13 @@ class Channel():
    if generate:
      self.token = memcache.get("token_%s" % self.address)
      if self.token is None:
-       self.token = channel.create_channel(self.address)
-       self.cached = False
+       device = models.getDevice(self.address)
+       if device.token and device.tokenValid():
+         self.token = device.token
+       else:
+         self.token = channel.create_channel(self.address)
+         self.cached = False
+         device.updateToken(self.token)
        memcache.set("token_%s" % self.address, self.token, time=7200)
 
   def send(self):

@@ -1,6 +1,6 @@
 from google.appengine.ext import db
 from google.appengine.api import memcache
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import logging
 
@@ -47,6 +47,8 @@ class DeviceData(db.Model):
   user = db.ReferenceProperty(UserData, collection_name="devices")
   name = db.StringProperty()
   address = db.StringProperty()
+  token = db.StringProperty()
+  token_expiration = db.DateTimeProperty()
   
   def save(self):
     if self.address == None:
@@ -54,6 +56,20 @@ class DeviceData(db.Model):
     self.put()
     memcache.set("device_%s_data" % self.address, self)
     return self
+
+  def tokenValid(self):
+    if self.token == None or self.token_expiration == None:
+      return False
+    current = datetime.now()
+    if self.token_expiration < current:
+      return False
+    else:
+      return True
+
+  def updateToken(self, token):
+    self.token = token
+    self.token_expiration = datetime.now() + timedelta(hours=2)
+    self.save()
 
 class LinkDoesNotExistError(Exception):
   id_or_name = None
