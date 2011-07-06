@@ -8,15 +8,11 @@ from google.appengine.api import users
 
 import auth, models, channels
 
-import logging
-
 class ConnectedPage(webapp.RequestHandler):
-  """This page is requested when the client is successfully connected to the channel."""
 
   def post(self, name="Chrome"):
     user = auth.getCurrentUser()
     device = None
-    logging.debug(name)
     if user:
       try:
         user_data = models.getUser(user)
@@ -25,7 +21,6 @@ class ConnectedPage(webapp.RequestHandler):
       try:
         device = models.getDevice("%s/%s" % (user.email(), name))
       except:
-        logging.debug("Failed to find device %s/%s. Creating now." % (user.email(), name))
         device = models.DeviceData(user = user_data, name = name).save()
       last_links = models.getUnreadLinks(device)
       channel = channels.Channel(device.address)
@@ -84,13 +79,11 @@ class AddLinkPage(webapp.RequestHandler):
       if receiver == None:
         receiver = device
       link = models.LinkData(url=self.request.get('link'), sender=device, receiver=receiver).save()
-      logging.info("Adding link %s" % link.key().id_or_name())
       channel = channels.Channel(receiver.address, False)
       channel.sendLink(link)
       self.response.out.write("Sent "+link.url+" to the cloud.")
 
 class TokenPage(webapp.RequestHandler):
-  """An page users POST to to receive a channel token."""
 
   def get(self, name=False):
     user = auth.getCurrentUser()
