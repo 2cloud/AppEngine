@@ -1,6 +1,8 @@
 from django.utils import simplejson
 from google.appengine.api import channel, memcache
 
+import logging
+
 class Channel():
   token = None
   address = None
@@ -18,8 +20,13 @@ class Channel():
 
   def send(self):
     channel.send_message(self.address, simplejson.dumps(self.message))
+    logging.info(simplejson.dumps(self.message))
+    self.message = {}
+    logging.info(simplejson.dumps(self.message))
 
   def queueLink(self, link):
+    logging.info("Queuing link %s" % link.key().id_or_name())
+    logging.info("Current queue: %s" % simplejson.dumps(self.message))
     if 'links' not in self.message:
       self.message['links'] = []
     link_message = {}

@@ -29,12 +29,14 @@
       var channel = new goog.appengine.Channel(token);
       var socket = channel.open();
       socket.onopen = function() {
-        window.setTimeout(function() {sendMessage('/channels/connected?name={{device_name}}')}, 100);
+        window.setTimeout(function() {sendMessage('/channels/connected/{{device_name}}')}, 100);
       }
       socket.onmessage = function(evt) {
+        console.log(evt.data);
           var o = JSON.parse(evt.data);
           if (o.links) {
-            update_links(o.links[0]);
+            for(link in o.links)
+              update_links(o.links[link]);
           }
         }
     </script>

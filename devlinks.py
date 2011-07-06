@@ -8,20 +8,24 @@ from google.appengine.api import users
 
 import auth, models, channels
 
+import logging
+
 class ConnectedPage(webapp.RequestHandler):
   """This page is requested when the client is successfully connected to the channel."""
 
   def post(self, name="Chrome"):
     user = auth.getCurrentUser()
     device = None
+    logging.debug(name)
     if user:
       try:
         user_data = models.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData(user = user).save()
       try:
-        device = models.getDevice("device_%s/%s_data" % (user.email(), name))
+        device = models.getDevice("%s/%s" % (user.email(), name))
       except:
+        logging.debug("Failed to find device %s/%s. Creating now." % (user.email(), name))
         device = models.DeviceData(user = user_data, name = name).save()
       last_links = models.getUnreadLinks(device)
       channel = channels.Channel(device.address)
@@ -34,16 +38,16 @@ class MainPage(webapp.RequestHandler):
 
   def get(self):
     user = auth.getCurrentUser()
+    name = "Web"
     if user:
       try:
         user_data = models.getUser(user)
       except models.UserDoesNotExistError:
         user_data = models.UserData(user = user).save()
       try:
-        device = models.getDevice("%s/Web" % user.email())
+        device = models.getDevice("%s/%s" % (user.email(), name))
       except models.DeviceDoesNotExistError:
-        logging.info("making device")
-        device = models.DeviceData(user = user_data, name = "Web").save()
+        device = models.DeviceData(user = user_data, name = name).save()
       channel = channels.Channel(device.address)
       template_values = {
         'channel_id': channel.token,
@@ -80,6 +84,7 @@ class AddLinkPage(webapp.RequestHandler):
       if receiver == None:
         receiver = device
       link = models.LinkData(url=self.request.get('link'), sender=device, receiver=receiver).save()
+      logging.info("Adding link %s" % link.key().id_or_name())
       channel = channels.Channel(receiver.address, False)
       channel.sendLink(link)
       self.response.out.write("Sent "+link.url+" to the cloud.")
