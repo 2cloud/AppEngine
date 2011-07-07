@@ -1,8 +1,10 @@
 from google.appengine.ext import db
 from google.appengine.api import memcache
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from datetime import date as datetime_date
+from django.utils import simplejson
 
-import logging
+import stats
 
 class UserDoesNotExistError(Exception):
   account = None
@@ -23,6 +25,10 @@ class UserData(db.Model):
     self.last_seen = datetime.now()
 
   def save(self):
+    try:
+      self.key()
+    except db.NotSavedError:
+      stats.record("user_added", self.user.email())
     self.put()
     memcache.set("user_%s_data" % self.user.user_id(), self)
     return self
@@ -51,6 +57,10 @@ class DeviceData(db.Model):
   token_expiration = db.DateTimeProperty()
   
   def save(self):
+    try:
+      self.key()
+    except db.NotSavedError:
+      stats.record("device_added", self.address)
     if self.address == None:
       self.address = "%s/%s" % (self.user.user.email(), self.name)
     self.put()
@@ -88,12 +98,35 @@ class LinkData(db.Model):
   received = db.BooleanProperty(default=False)
 
   def save(self):
+    try:
+      self.key()
+    except db.NotSavedError:
+      stats.record("link_added", self.sender.user.user.email())
     self.put()
     return self
 
   def markRead(self):
     self.received = True
+    stats.record("link_opened", self.sender.user.user.email())
     self.save()
+
+class StatsData(db.Model):
+  datapoint = db.StringProperty()
+  count = db.IntegerProperty()
+  date = db.DateProperty()
+
+  def save(self):
+    self.put()
+    memcache.set("stats_%s_%s" % (self.datapoint, self.date), self)
+    return self
+
+  def increment(self):
+    self.count = self.count + 1
+    memcache.set("stats_%s_%s" % (self.datapoint, self.date), self)
+
+class StatsSubscription(db.Model):
+  event = db.StringProperty()
+  datapoint = db.StringProperty()
 
 def getUser(account):
   user = memcache.get("user_%s_data", account.user_id())
@@ -127,3 +160,16 @@ def getUnreadLinks(device, count=1000):
 
 def getLinksByAccount(user, count=1000):
   return LinkData.all().filter("receiver IN", user.devices).order("-date").fetch(count)
+
+def getStats(datapoint, date=False):
+  if not date:
+    date = datetime_date.today()
+  stats = memcache.get("stats_%s_%s" % (datapoint, date))
+  if stats == None:
+    stats = StatsData.all().filter("datapoint =", datapoint).filter("date =", date).get()
+    if stats == None:
+      stats = StatsData(datapoint=datapoint, date=date, count=0)
+      stats.put()
+    else:
+      memcache.set("stats_%s_%s" % (datapoint, date), stats)
+  return stats

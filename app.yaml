@@ -8,5 +8,9 @@ handlers:
   static_dir: static
 - url: /connected
   script: devlinks.py
+- url: /stats/.*
+  script: devlinks.py
+- url: /_ah/prospective_search
+  script: devlinks.py
 - url: /.*
   script: devlinks.py

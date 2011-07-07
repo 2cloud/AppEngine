@@ -1,7 +1,7 @@
 from django.utils import simplejson
 from google.appengine.api import channel, memcache
 
-import models
+import models, stats
 
 class Channel():
   token = None
@@ -19,6 +19,7 @@ class Channel():
          self.token = device.token
        else:
          self.token = channel.create_channel(self.address)
+         stats.record("channel_created", self.address)
          self.cached = False
          device.updateToken(self.token)
        memcache.set("token_%s" % self.address, self.token, time=7200)

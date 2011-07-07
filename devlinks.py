@@ -1,12 +1,15 @@
 #!/usr/bin/python2.4
 
 import os
-from google.appengine.ext import webapp
+from django.utils import simplejson
+from google.appengine.ext import webapp, db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
-from google.appengine.api import users
+from google.appengine.api import users, prospective_search
 
-import auth, models, channels
+import auth, models, channels, stats
+
+import logging
 
 class ConnectedPage(webapp.RequestHandler):
 
@@ -27,6 +30,7 @@ class ConnectedPage(webapp.RequestHandler):
       for link in last_links:
         channel.queueLink(link)
       channel.send()
+      stats.record("user_connected", user.email())
       self.response.out.write(device.address)
 
 class MainPage(webapp.RequestHandler):
@@ -123,6 +127,40 @@ class MarkAsReadHandler(webapp.RequestHandler):
         link_data = models.getLink(link)
         link_data.markRead()
 
+class SubscribeHandler(webapp.RequestHandler):
+  def get(self):
+    path = os.path.join(os.path.dirname(__file__), 'subscribe.html')
+    self.response.out.write(template.render(path, {}))
+
+  def post(self):
+    event = self.request.POST['event']
+    datapoint = self.request.POST['datapoint']
+    subscription_id = models.StatsSubscription(event=event, datapoint=datapoint).put()
+    prospective_search.subscribe(stats.StatsRecord, 'event:%s' % event, subscription_id)
+    self.response.out.write("Subscribed the datapoint %s to %s events." % (datapoint, event))
+
+class StatsHandler(webapp.RequestHandler):
+  def post(self):
+    record = prospective_search.get_document(self.request)
+    subscriber_keys = map(db.Key, self.request.get_all('id'))
+    subscribers = db.get(subscriber_keys)
+    datapoints = []
+    stats_json = []
+    for subscriber_key, subscriber in zip(subscriber_keys, subscribers):
+      if not subscriber:
+        prospective_search.unsubscribe(stats.StatsRecord, subscriber_key)
+      else:
+        datapoints.append(models.getStats(subscriber.datapoint, record.timestamp.date()))
+    for datapoint in datapoints:
+      datapoint.increment()
+      day = record.timestamp.date()
+      date = "%s/%s/%s" % (day.month, day.day, day.year)
+      json = {'datapoint': datapoint.datapoint, 'count': datapoint.count, 'date': date}
+      stats_json.append(json)
+    db.put(datapoints)
+    logging.debug(simplejson.dumps(stats_json))
+
+
 application = webapp.WSGIApplication([
     ('/', MainPage),
     ('/links/add', AddLinkPage),
@@ -131,6 +169,8 @@ application = webapp.WSGIApplication([
     ('/channels/connected/([^/]*)', ConnectedPage),
     ('/channels/get', TokenPage),
     ('/channels/get/(.*)', TokenPage),
+    ('/stats/subscribe', SubscribeHandler),
+    ('/_ah/prospective_search', StatsHandler)
     ], debug=True)
 
 
