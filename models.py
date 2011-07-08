@@ -1,7 +1,6 @@
 from google.appengine.ext import db
 from google.appengine.api import memcache, users
 from datetime import datetime, timedelta
-from datetime import date as datetime_date
 from django.utils import simplejson
 
 import stats
@@ -131,16 +130,19 @@ class LinkData(db.Model):
 class StatsData(db.Model):
     datapoint = db.StringProperty()
     count = db.IntegerProperty()
-    date = db.DateProperty()
+    date = db.DateTimeProperty()
+    duration = db.StringProperty()
 
     def save(self):
         self.put()
-        memcache.set("stats_%s_%s" % (self.datapoint, self.date), self)
+        memcache.set("stats_%s_%s_%s" %
+                (self.datapoint, self.date, self.duration), self)
         return self
 
     def increment(self):
         self.count = self.count + 1
-        memcache.set("stats_%s_%s" % (self.datapoint, self.date), self)
+        memcache.set("stats_%s_%s_%s" %
+                (self.datapoint, self.date, self.duration), self)
 
 
 class StatsSubscription(db.Model):
@@ -190,16 +192,22 @@ def getLinksByAccount(user, count=1000):
         .order("-date").fetch(count))
 
 
-def getStats(datapoint, date=False):
+def getStats(datapoint, date=False, duration="day"):
     if not date:
-        date = datetime_date.today()
-    stats = memcache.get("stats_%s_%s" % (datapoint, date))
+        date = datetime.now()
+    if duration == 'day':
+        date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif duration == 'hour':
+        date = date.replace(minute=0, second=0, microsecond=0)
+    stats = memcache.get("stats_%s_%s_%s" % (datapoint, date, duration))
     if stats == None:
         stats = (StatsData.all().filter("datapoint =", datapoint)
-            .filter("date =", date).get())
+            .filter("date =", date).filter("duration =", duration).get())
         if stats == None:
-            stats = StatsData(datapoint=datapoint, date=date, count=0)
+            stats = StatsData(datapoint=datapoint, date=date, count=0,
+                    duration=duration)
             stats.put()
         else:
-            memcache.set("stats_%s_%s" % (datapoint, date), stats)
+            memcache.set("stats_%s_%s_%s" % (datapoint, date, duration),
+                    stats)
     return stats

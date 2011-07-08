@@ -7,14 +7,15 @@
         <script src="/js/jquery.color.js" type="text/javascript"></script>
         <script type="text/javascript">
             var chart1;
+            var chart2;
             $(document).ready(function() {
                 chart1 = new Highcharts.Chart({
                     chart: {
-                        renderTo: 'chart',
+                        renderTo: 'hourly_chart',
                         type: 'area'
                     },
                     title: {
-                        text: '2cloud Stats'
+                        text: 'Hourly Stats'
                     },
                     xAxis: {
                         title: {
@@ -28,7 +29,7 @@
                             text: 'Number'
                         }
                     },
-                    series: [{% for datapoint in stats %}{
+                    series: [{% for datapoint in stats.hour %}{
                         id: '{{ datapoint.0.name }}',
                         name: '{{ datapoint.0.name }}',
                         data: [{% for value in datapoint %}
@@ -39,22 +40,48 @@
                     credits: {
                         enabled: false
                     },
+                });
 
-
+                chart2 = new Highcharts.Chart({
+                    chart: {
+                        renderTo: 'daily_chart',
+                        type: 'area'
+                    },
+                    title: {
+                        text: 'Daily Stats'
+                    },
+                    xAxis: {
+                        title: {
+                            text: 'Date'
+                        }
+                    },
+                    series: [{% for datapoint in stats.day %}{
+                        id: '{{ datapoint.0.name }}',
+                        name: '{{ datapoint.0.name }}',
+                        data: [{% for value in datapoint %}
+                              [{{ value.timestamp }}, {{ value.count }}],
+                              {% endfor %}]
+                            },{% endfor %}
+                    ],
+                    credits: {
+                        enabled: false
+                    }
                 });
             });
             
-            function addOrUpdate(timestamp, value, datapoint) {
-                console.log(timestamp +", "+ value +", "+datapoint);
+            function addOrUpdate(timestamp, value, datapoint, duration) {
+                console.log(timestamp +", "+ value +", "+datapoint+", "+duration);
                 var updated = false;
-                var series = chart1.get(datapoint);
+                chart = (duration == 'hour') ? chart1 : chart2;
+                console.log(chart);
+                var series = chart.get(datapoint);
                 if(series == null) {
-                    chart1.addSeries({
+                    chart.addSeries({
                         id: datapoint,
                         name: datapoint,
                         data: [[timestamp, value]]
                         });
-                    series = chart1.get(datapoint);
+                    series = chart.get(datapoint);
                 }
                 for(d=0; d < series.data.length; d++) {
                     if(series.data[d].x == timestamp) {
@@ -65,7 +92,7 @@
                     }
                 }
                 if(!updated) {
-                    chart1.series[s].addPoint([timestamp, value]);
+                    series.addPoint([timestamp, value]);
                 }
                 var table = $('#'+datapoint+'-table');
                 var tr = $('#'+datapoint+'_'+timestamp+'-tr');
@@ -117,10 +144,13 @@
                     addOrUpdate(message.stats[x].timestamp, message.stats[x].count, message.stats[x].datapoint);
             }
         </script>
-        <div id="chart" style="width: 100%; height: 400px;"></div>
-        {% for datapoint in stats %}
+        <div id="daily_chart" style="width: 49%; height: 400px; float: left;"></div>
+        <div id="hourly_chart" style="width: 49%; height: 400px; float: left;"></div>
+        <br style="clear: both;" />
+        <div style="float: left; width: 49%;">
+        {% for datapoint in stats.day %}
         <div style="float: left; padding: 20px;">
-        <h2 style="text-align: center;">{{ datapoint.0.name }}</h2>
+        <h2 style="text-align: center;">Daily {{ datapoint.0.name }}</h2>
         <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
             <tr>
                 <th>Date</th>
@@ -130,8 +160,29 @@
             <tr class="{% cycle odd,even %}" id="{{ value.name }}_{{ value.timestamp }}-tr">
                 <td id="{{ value.name }}_{{ value.timestamp }}_name-td">{{ value.date }}</td>
                 <td style="text-align: right;" id="{{ value.name }}_{{ value.timestamp }}_count-td">{{ value.count }}</td>
+
             </tr>{% endfor %}
         </table>
-        </div>{% endfor %}
+    </div>{% endfor %}
+    </div>
+    <div style="float: left; width: 49%;">
+        {% for datapoint in stats.hour %}
+        <div style="float: left; padding: 20px;">
+        <h2 style="text-align: center;">Hourly {{ datapoint.0.name }}</h2>
+        <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
+            <tr>
+                <th>Date</th>
+                <th>Count</th>
+            </tr>
+            {% for value in datapoint %}
+            <tr class="{% cycle odd,even %}" id="{{ value.name }}_{{ value.timestamp }}-tr">
+                <td id="{{ value.name }}_{{ value.timestamp }}_name-td">{{ value.date }}</td>
+                <td style="text-align: right;" id="{{ value.name }}_{{ value.timestamp }}_count-td">{{ value.count }}</td>
+
+            </tr>{% endfor %}
+        </table>
+    </div>{% endfor %}
+    </div>
+    <br style="clear: both;" />
     </body>
 </html>

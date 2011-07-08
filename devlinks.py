@@ -171,7 +171,9 @@ class StatsHandler(webapp.RequestHandler):
                     subscriber_key)
             else:
                 datapoints.append(models.getStats(subscriber.datapoint,
-                  record.timestamp.date()))
+                    record.timestamp, duration='day'))
+                datapoints.append(models.getStats(subscriber.datapoint,
+                    record.timestamp, duration='hour'))
         for datapoint in datapoints:
             if datapoint.datapoint == 'active_users':
                 try:
@@ -182,12 +184,12 @@ class StatsHandler(webapp.RequestHandler):
                     user.updateLastSeen()
                 else:
                     break
-
             datapoint.increment()
-            day = record.timestamp.date()
             json = {'datapoint': datapoint.datapoint, 'count': datapoint.count,
-                    'date': day.strftime("%A %B %d, %Y at %H:%M"),
-                    'timestamp': int(time.mktime(day.timetuple())) * 1000}
+                    'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
+                    'timestamp': int(time.mktime(
+                        datapoint.date.timetuple())) * 1000,
+                    'duration': datapoint.duration}
             stats_json.append(json)
         db.put(datapoints)
         push = channels.Channel("stats@2cloudproject.com/Web", False)
@@ -210,24 +212,29 @@ class StatsDashboard(webapp.RequestHandler):
                     name="Web").save()
         channel = channels.Channel(device.address)
         path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
-        stats = (models.StatsData.all().order("-date").fetch(1000))
+        stats_data = models.StatsData.all().order("-date").fetch(1000)
         template_values = {
                 'channel_id': channel.token,
-                'stats': {}
+                'stats': {'hour': {}, 'day': {}}
         }
-        for datapoint in stats:
-            if not datapoint.datapoint in template_values['stats']:
-                template_values['stats'][datapoint.datapoint] = []
-            template_values['stats'][datapoint.datapoint].append({
+        stats = template_values['stats']
+        for datapoint in stats_data:
+            if not (datapoint.datapoint in stats[datapoint.duration]):
+                stats[datapoint.duration][datapoint.datapoint] = []
+            stats[datapoint.duration][datapoint.datapoint].append({
                     'name': datapoint.datapoint,
                     'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
                     'timestamp': int(time.mktime(
                         datapoint.date.timetuple()) * 1000),
-                    'count': int(datapoint.count)
+                    'count': int(datapoint.count),
+                    'duration': datapoint.duration
             })
-        template_values['stats'] = template_values['stats'].values()
-        template_values['stats'] = sorted(template_values['stats'],
+        stats['hour'] = stats['hour'].values()
+        stats['day'] = stats['day'].values()
+        stats['hour'] = sorted(stats['hour'],
                 key=lambda stat: stat[0]['name'])
+        stats['day'] = sorted(stats['day'], key=lambda stat: stat[0]['name'])
+        template_values['stats'] = stats
         self.response.out.write(template.render(path, template_values))
 
 
