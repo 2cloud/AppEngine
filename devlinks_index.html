@@ -13,9 +13,14 @@
         sendMessage('/links/add?link=' + link + '&name={{device_name}}&receiver=' + namespace)
       }
 
+      markRead = function(link) {
+          sendMessage('/links/mark_read?links=' + encodeURIComponent(JSON.stringify([link])));
+          document.getElementById(link).style.display = 'none';
+      }
+
       update_links = function(link) {
         var link_list = document.getElementById('links');
-        link_list.innerHTML += "<li><a href=\""+link.url+"\" target=\"_blank\">"+link.url+"</a> from "+link.from+"</li>\n";
+        link_list.innerHTML += "<li id=\""+link.id+"\"><a href=\""+link.url+"\" target=\"_blank\">"+link.url+"</a> from "+link.sender+" <a href=\"#\" onClick=\"markRead("+link.id+");\">[x]</a></li>\n";
       }
 
       sendMessage = function(path) {
