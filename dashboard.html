@@ -30,7 +30,7 @@
                         }
                     },
                     series: [{% for datapoint in stats.hour %}{
-                        id: '{{ datapoint.0.name }}',
+                        id: '{{ datapoint.0.name }}-hour',
                         name: '{{ datapoint.0.name }}',
                         data: [{% for value in datapoint %}
                               [{{value.timestamp}}, {{value.count}}],
@@ -53,10 +53,11 @@
                     xAxis: {
                         title: {
                             text: 'Date'
-                        }
-                    },
+                        },
+                        type: 'datetime',
+                   },
                     series: [{% for datapoint in stats.day %}{
-                        id: '{{ datapoint.0.name }}',
+                        id: '{{ datapoint.0.name }}-day',
                         name: '{{ datapoint.0.name }}',
                         data: [{% for value in datapoint %}
                               [{{ value.timestamp }}, {{ value.count }}],
@@ -72,12 +73,16 @@
             function addOrUpdate(timestamp, value, datapoint, duration) {
                 console.log(timestamp +", "+ value +", "+datapoint+", "+duration);
                 var updated = false;
-                chart = (duration == 'hour') ? chart1 : chart2;
+                chart = null;
+                if(duration == 'hour')
+                    chart = chart1;
+                else
+                    chart = chart2;
                 console.log(chart);
-                var series = chart.get(datapoint);
+                var series = chart.get(datapoint+'-'+duration);
                 if(series == null) {
                     chart.addSeries({
-                        id: datapoint,
+                        id: datapoint+'-'+duration,
                         name: datapoint,
                         data: [[timestamp, value]]
                         });
@@ -141,7 +146,7 @@
                 console.log(evt.data);
                 message = JSON.parse(evt.data);
                 for(x = 0; x < message.stats.length; x++)
-                    addOrUpdate(message.stats[x].timestamp, message.stats[x].count, message.stats[x].datapoint);
+                    addOrUpdate(message.stats[x].timestamp, message.stats[x].count, message.stats[x].datapoint, message.stats[x].duration);
             }
         </script>
         <div id="daily_chart" style="width: 49%; height: 400px; float: left;"></div>
