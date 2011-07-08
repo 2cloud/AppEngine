@@ -7,6 +7,7 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api import users, prospective_search
 from datetime import datetime
+import time
 
 import auth
 import models
@@ -195,6 +196,29 @@ class StatsHandler(webapp.RequestHandler):
         logging.debug(simplejson.dumps(stats_json))
 
 
+class StatsDashboard(webapp.RequestHandler):
+    def get(self):
+        path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
+        stats = (models.StatsData.all().order("-date").fetch(1000))
+        template_values = {
+                'stats': {}
+        }
+        for datapoint in stats:
+            if not datapoint.datapoint in template_values['stats']:
+                template_values['stats'][datapoint.datapoint] = []
+            template_values['stats'][datapoint.datapoint].append({
+                    'name': datapoint.datapoint,
+                    'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
+                    'timestamp': int(time.mktime(
+                        datapoint.date.timetuple()) * 1000),
+                    'count': int(datapoint.count)
+            })
+        template_values['stats'] = template_values['stats'].values()
+        template_values['stats'] = sorted(template_values['stats'],
+                key=lambda stat: stat[0]['name'])
+        self.response.out.write(template.render(path, template_values))
+
+
 application = webapp.WSGIApplication([
         ('/', MainPage),
         ('/links/add', AddLinkPage),
@@ -204,6 +228,7 @@ application = webapp.WSGIApplication([
         ('/channels/get', TokenPage),
         ('/channels/get/(.*)', TokenPage),
         ('/stats/subscribe', SubscribeHandler),
+        ('/stats/dashboard', StatsDashboard),
         ('/_ah/prospective_search', StatsHandler)
         ], debug=True)
 

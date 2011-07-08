@@ -7,6 +7,8 @@ builtins:
 - appstats: on
 
 handlers:
+- url: /js
+  static_dir: js
 - url: /connected
   script: devlinks.py
 - url: /stats/.*
