@@ -6,6 +6,7 @@ from google.appengine.ext import webapp, db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api import users, prospective_search
+from datetime import datetime
 
 import auth
 import models
@@ -34,7 +35,8 @@ class ConnectedPage(webapp.RequestHandler):
             for link in last_links:
                 channel.queueLink(link)
             channel.send()
-            stats.record("user_connected", user.email())
+            stats.record("user_connected",
+                    simplejson.dumps({"user": user.email()}))
             self.response.out.write(device.address)
 
 
@@ -160,6 +162,7 @@ class SubscribeHandler(webapp.RequestHandler):
 class StatsHandler(webapp.RequestHandler):
     def post(self):
         record = prospective_search.get_document(self.request)
+        record_value = simplejson.loads(record.value)
         subscriber_keys = map(db.Key, self.request.get_all('id'))
         subscribers = db.get(subscriber_keys)
         datapoints = []
@@ -172,6 +175,16 @@ class StatsHandler(webapp.RequestHandler):
                 datapoints.append(models.getStats(subscriber.datapoint,
                   record.timestamp.date()))
         for datapoint in datapoints:
+            if datapoint.datapoint == 'active_users':
+                try:
+                    user = models.getUser(record_value['user'], False)
+                except models.UserDoesNotExistError:
+                    break
+                if user.last_seen.date() < datetime.now().date():
+                    user.updateLastSeen()
+                else:
+                    break
+
             datapoint.increment()
             day = record.timestamp.date()
             date = "%s/%s/%s" % (day.month, day.day, day.year)

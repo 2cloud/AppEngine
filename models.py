@@ -1,6 +1,6 @@
 from google.appengine.ext import db
-from google.appengine.api import memcache
-from datetime import datetime, timedelta, date
+from google.appengine.api import memcache, users
+from datetime import datetime, timedelta
 from datetime import date as datetime_date
 from django.utils import simplejson
 
@@ -31,7 +31,8 @@ class UserData(db.Model):
         try:
             self.key()
         except db.NotSavedError:
-            stats.record("user_added", self.user.email())
+            stats.record("user_added",
+                    simplejson.dumps({"user": self.user.email()}))
         self.put()
         memcache.set("user_%s_data" % self.user.user_id(), self)
         return self
@@ -109,13 +110,19 @@ class LinkData(db.Model):
         try:
             self.key()
         except db.NotSavedError:
-            stats.record("link_added", self.sender.user.user.email())
+            stats.record("link_added", simplejson.dumps({
+                "user": self.sender.user.user.email(),
+                "link": self.url
+            }))
         self.put()
         return self
 
     def markRead(self):
         self.received = True
-        stats.record("link_opened", self.sender.user.user.email())
+        stats.record("link_opened", simplejson.dumps({
+            "user": self.sender.user.user.email(),
+            "link": self.url
+        }))
         self.save()
 
 
@@ -139,7 +146,9 @@ class StatsSubscription(db.Model):
     datapoint = db.StringProperty()
 
 
-def getUser(account):
+def getUser(account, fromObject=True):
+    if not fromObject:
+        account = users.User(account)
     user = memcache.get("user_%s_data", account.user_id())
     if user == None:
         user = UserData.all().filter("user =", account).get()
