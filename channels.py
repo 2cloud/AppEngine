@@ -21,7 +21,8 @@ class Channel():
                     self.token = device.token
                 else:
                     self.token = channel.create_channel(self.address)
-                    stats.record("channel_created", self.address)
+                    stats.record("channel_created", simplejson.dumps({
+                        "channel": self.address}))
                     self.cached = False
                     device.updateToken(self.token)
                 memcache.set("token_%s" % self.address, self.token, time=7200)

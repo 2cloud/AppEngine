@@ -18,7 +18,6 @@ import logging
 
 
 class ConnectedPage(webapp.RequestHandler):
-
     def post(self, name="Chrome"):
         user = auth.getCurrentUser()
         device = None
@@ -42,7 +41,6 @@ class ConnectedPage(webapp.RequestHandler):
 
 
 class MainPage(webapp.RequestHandler):
-
     def get(self):
         user = auth.getCurrentUser()
         name = "Web"
@@ -103,7 +101,6 @@ class AddLinkPage(webapp.RequestHandler):
 
 
 class TokenPage(webapp.RequestHandler):
-
     def get(self, name=False):
         user = auth.getCurrentUser()
         if user:
@@ -188,19 +185,34 @@ class StatsHandler(webapp.RequestHandler):
 
             datapoint.increment()
             day = record.timestamp.date()
-            date = "%s/%s/%s" % (day.month, day.day, day.year)
             json = {'datapoint': datapoint.datapoint, 'count': datapoint.count,
-                'date': date}
+                    'date': day.strftime("%A %B %d, %Y at %H:%M"),
+                    'timestamp': int(time.mktime(day.timetuple())) * 1000}
             stats_json.append(json)
         db.put(datapoints)
+        push = channels.Channel("stats@2cloudproject.com/Web", False)
+        push.message = {"stats": stats_json}
+        push.send()
         logging.debug(simplejson.dumps(stats_json))
 
 
 class StatsDashboard(webapp.RequestHandler):
     def get(self):
+        user = users.User('stats@2cloudproject.com')
+        try:
+            user_data = models.getUser(user)
+        except models.UserDoesNotExistError:
+            user_data = models.UserData(user=user).save()
+        try:
+            device = models.getDevice("%s/%s" % (user.email(), "Web"))
+        except models.DeviceDoesNotExistError:
+            device = models.DeviceData(user=user_data,
+                    name="Web").save()
+        channel = channels.Channel(device.address)
         path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
         stats = (models.StatsData.all().order("-date").fetch(1000))
         template_values = {
+                'channel_id': channel.token,
                 'stats': {}
         }
         for datapoint in stats:

@@ -1,8 +1,10 @@
 <html>
     <head>
         <title>Stats Dashboard</title>
+        <script src="/_ah/channel/jsapi"></script>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" type="text/javascript"></script>
         <script src="/js/highcharts.js" type="text/javascript"></script>
+        <script src="/js/jquery.color.js" type="text/javascript"></script>
         <script type="text/javascript">
             var chart1;
             $(document).ready(function() {
@@ -27,6 +29,7 @@
                         }
                     },
                     series: [{% for datapoint in stats %}{
+                        id: '{{ datapoint.0.name }}',
                         name: '{{ datapoint.0.name }}',
                         data: [{% for value in datapoint %}
                               [{{value.timestamp}}, {{value.count}}],
@@ -40,6 +43,40 @@
 
                 });
             });
+            
+            function addOrUpdate(timestamp, value, datapoint) {
+                console.log(timestamp +", "+ value +", "+datapoint);
+                var updated = false;
+                var series = chart1.get(datapoint);
+                if(series == null) {
+                    chart1.addSeries({
+                        id: datapoint,
+                        name: datapoint,
+                        data: [[timestamp, value]]
+                        });
+                    series = chart1.get(datapoint);
+                }
+                for(d=0; d < series.data.length; d++) {
+                    if(series.data[d].x == timestamp) {
+                        series.data[d].update(value);
+                        updated = true;
+                        d = series.data.length;
+                        continue;
+                    }
+                }
+                if(!updated) {
+                    chart1.series[s].addPoint([timestamp, value]);
+                }
+                var table = $('#'+datapoint+'-table');
+                var tr = $('#'+datapoint+'_'+timestamp+'-tr');
+                var date_td = $('#'+datapoint+'_'+timestamp+'_date-td');
+                var count_td = $('#'+datapoint+'_'+timestamp+'_count-td');
+                count_td.text(value);
+                if(tr.attr('class') == 'odd')
+                    tr.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
+                else
+                    tr.animate({backgroundColor: '#eeffff'}).animate({backgroundColor: '#cceeff'});
+            }
         </script>
         <style>
             h2 {
@@ -69,6 +106,17 @@
         </style>
     </head>
     <body>
+        <script type="text/javascript">
+            var token = "{{ channel_id }}";
+            var channel = new goog.appengine.Channel(token);
+            var socket = channel.open();
+            socket.onmessage = function(evt) {
+                console.log(evt.data);
+                message = JSON.parse(evt.data);
+                for(x = 0; x < message.stats.length; x++)
+                    addOrUpdate(message.stats[x].timestamp, message.stats[x].count, message.stats[x].datapoint);
+            }
+        </script>
         <div id="chart" style="width: 100%; height: 400px;"></div>
         {% for datapoint in stats %}
         <div style="float: left; padding: 20px;">

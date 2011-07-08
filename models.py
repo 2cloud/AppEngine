@@ -66,7 +66,9 @@ class DeviceData(db.Model):
         try:
             self.key()
         except db.NotSavedError:
-            stats.record("device_added", self.address)
+            stats.record("device_added",
+                    simplejson.dumps({"user": self.user.user.email(),
+                        "device": self.address}))
         if self.address == None:
             self.address = "%s/%s" % (self.user.user.email(), self.name)
         self.put()
