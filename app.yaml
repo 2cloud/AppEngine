@@ -8,7 +8,9 @@ handlers:
   script: devlinks.py
 - url: /stats/.*
   script: devlinks.py
+  login: admin
 - url: /_ah/prospective_search
   script: devlinks.py
+  login: admin
 - url: /.*
   script: devlinks.py
