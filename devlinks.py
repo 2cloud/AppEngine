@@ -6,13 +6,13 @@ from google.appengine.ext import webapp, db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api import users, prospective_search
-from datetime import datetime
 import time
 
 import auth
 import models
 import channels
 import stats
+import timestamp
 
 import logging
 
@@ -180,7 +180,7 @@ class StatsHandler(webapp.RequestHandler):
                     user = models.getUser(record_value['user'], False)
                 except models.UserDoesNotExistError:
                     break
-                if user.last_seen.date() < datetime.now().date():
+                if user.last_seen.date() < timestamp.now().date():
                     user.updateLastSeen()
                 else:
                     break
@@ -246,6 +246,17 @@ class StatsInit(webapp.RequestHandler):
             datapoint = models.getStats(datapoint, duration=duration)
 
 
+class QuotaCountdown(webapp.RequestHandler):
+    def get(self):
+        stamp = timestamp.now()
+        reset = stamp.replace(day=stamp.day + 1, hour=0, minute=0, second=0,
+                microsecond=0)
+        countdown = reset - stamp
+        response = {}
+        response['readable'] = str(countdown)
+        response['seconds'] = countdown.seconds + (countdown.days * 24 * 3600)
+        self.response.out.write(simplejson.dumps(response))
+
 application = webapp.WSGIApplication([
         ('/', MainPage),
         ('/links/add', AddLinkPage),
@@ -257,6 +268,7 @@ application = webapp.WSGIApplication([
         ('/stats/subscribe', SubscribeHandler),
         ('/stats/dashboard', StatsDashboard),
         ('/stats/init/(.*)', StatsInit),
+        ('/quota/countdown', QuotaCountdown),
         ('/_ah/prospective_search', StatsHandler)
         ], debug=True)
 

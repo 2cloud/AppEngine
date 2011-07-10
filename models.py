@@ -1,9 +1,10 @@
 from google.appengine.ext import db
 from google.appengine.api import memcache, users
-from datetime import datetime, timedelta
 from django.utils import simplejson
+from datetime import timedelta
 
 import stats
+import timestamp
 
 
 class UserDoesNotExistError(Exception):
@@ -24,7 +25,7 @@ class UserData(db.Model):
     last_seen = db.DateTimeProperty(auto_now_add=True)
 
     def updateLastSeen(self):
-        self.last_seen = datetime.now()
+        self.last_seen = timestamp.now()
 
     def save(self):
         try:
@@ -77,7 +78,7 @@ class DeviceData(db.Model):
     def tokenValid(self):
         if self.token == None or self.token_expiration == None:
             return False
-        current = datetime.now()
+        current = timestamp.now()
         if self.token_expiration < current:
             return False
         else:
@@ -85,7 +86,7 @@ class DeviceData(db.Model):
 
     def updateToken(self, token):
         self.token = token
-        self.token_expiration = datetime.now() + timedelta(hours=2)
+        self.token_expiration = timestamp.now() + timedelta(hours=2)
         self.save()
 
 
@@ -194,7 +195,7 @@ def getLinksByAccount(user, count=1000):
 
 def getStats(datapoint, date=False, duration="day"):
     if not date:
-        date = datetime.now()
+        date = timestamp.now()
     if duration == 'day':
         date = date.replace(hour=0, minute=0, second=0, microsecond=0)
     elif duration == 'hour':
