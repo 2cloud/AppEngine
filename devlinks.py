@@ -141,6 +141,21 @@ class MarkAsReadHandler(webapp.RequestHandler):
                 link_data.markRead()
 
 
+class SetQuotaHandler(webapp.RequestHandler):
+    def get(self):
+        quota = models.getQuota()
+        vars = {
+                'current': quota.amount
+        }
+        logging.debug(quota.amount)
+        path = os.path.join(os.path.dirname(__file__), 'quota.html')
+        self.response.out.write(template.render(path, vars))
+
+    def post(self):
+        quota = self.request.POST['quota']
+        models.updateQuota(quota)
+
+
 class SubscribeHandler(webapp.RequestHandler):
     def get(self):
         path = os.path.join(os.path.dirname(__file__), 'subscribe.html')
@@ -269,6 +284,7 @@ application = webapp.WSGIApplication([
         ('/stats/dashboard', StatsDashboard),
         ('/stats/init/(.*)', StatsInit),
         ('/quota/countdown', QuotaCountdown),
+        ('/quota/set', SetQuotaHandler),
         ('/_ah/prospective_search', StatsHandler)
         ], debug=True)
 

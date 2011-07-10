@@ -146,6 +146,11 @@ class StatsData(db.Model):
                 (self.datapoint, self.date, self.duration), self)
 
 
+class QuotaData(db.Model):
+    date = db.DateTimeProperty()
+    amount = db.IntegerProperty()
+
+
 class StatsSubscription(db.Model):
     event = db.StringProperty()
     datapoint = db.StringProperty()
@@ -214,3 +219,21 @@ def getStats(datapoint, date=False, duration="day"):
             memcache.set("stats_%s_%s_%s" % (datapoint, date, duration),
                     stats)
     return stats
+
+
+def getQuota():
+    date = timestamp.now()
+    quota = memcache.get("quota")
+    if quota == None:
+        quota = QuotaData.all().order("-date").get()
+        if quota == None:
+            quota = QuotaData(amount=0, date=date).put()
+        memcache.set("quota", quota)
+    return quota
+
+
+def updateQuota(level):
+    quota = QuotaData(amount=int(level), date=timestamp.now())
+    quota.put()
+    memcache.set("quota", quota)
+    return quota
