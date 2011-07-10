@@ -238,6 +238,14 @@ class StatsDashboard(webapp.RequestHandler):
         self.response.out.write(template.render(path, template_values))
 
 
+class StatsInit(webapp.RequestHandler):
+    def get(self, duration='hour'):
+        datapoints = ['registration', 'links', 'opened_links', 'channels',
+                'devices', 'connections', 'active_users']
+        for datapoint in datapoints:
+            datapoint = models.getStats(datapoint, duration=duration)
+
+
 application = webapp.WSGIApplication([
         ('/', MainPage),
         ('/links/add', AddLinkPage),
@@ -248,6 +256,7 @@ application = webapp.WSGIApplication([
         ('/channels/get/(.*)', TokenPage),
         ('/stats/subscribe', SubscribeHandler),
         ('/stats/dashboard', StatsDashboard),
+        ('/stats/init/(.*)', StatsInit),
         ('/_ah/prospective_search', StatsHandler)
         ], debug=True)
 

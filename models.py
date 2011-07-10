@@ -199,6 +199,8 @@ def getStats(datapoint, date=False, duration="day"):
         date = date.replace(hour=0, minute=0, second=0, microsecond=0)
     elif duration == 'hour':
         date = date.replace(minute=0, second=0, microsecond=0)
+    else:
+        return
     stats = memcache.get("stats_%s_%s_%s" % (datapoint, date, duration))
     if stats == None:
         stats = (StatsData.all().filter("datapoint =", datapoint)
