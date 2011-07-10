@@ -214,6 +214,8 @@ def getStats(datapoint, date=False, duration="day"):
         if stats == None:
             stats = StatsData(datapoint=datapoint, date=date, count=0,
                     duration=duration)
+            if datapoint == 'quota':
+                stats.count = getQuota().amount
             stats.put()
         else:
             memcache.set("stats_%s_%s_%s" % (datapoint, date, duration),
