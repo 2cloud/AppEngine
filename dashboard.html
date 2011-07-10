@@ -70,7 +70,7 @@
                 });
             });
             
-            function addOrUpdate(timestamp, value, datapoint, duration) {
+            function addOrUpdate(timestamp, date, value, datapoint, duration) {
                 console.log(timestamp +", "+ value +", "+datapoint+", "+duration);
                 var updated = false;
                 chart = null;
@@ -100,10 +100,24 @@
                     series.addPoint([timestamp, value]);
                 }
                 var table = $('#'+datapoint+'-table');
+                var firstRow = $('#'+datapoint+'-table tr:first');
                 var tr = $('#'+datapoint+'_'+timestamp+'-tr');
                 var date_td = $('#'+datapoint+'_'+timestamp+'_date-td');
                 var count_td = $('#'+datapoint+'_'+timestamp+'_count-td');
-                count_td.text(value);
+                if(tr.length == 0) {
+                    if(firstRow.attr('class') == 'odd') {
+                        newClass = 'even';
+                    } else {
+                        newClass = 'odd';
+                    }
+                    newRow = "<tr class='"+newClass+"' id='"+datapoint+"_"+timestamp+"-tr'>";
+                    newRow += "<td id='"+datapoint+"_"+timestamp+"_date-td'>"+date+"</td>";
+                    newRow += "<td id='"+datapoint+"_"+timestamp+"_count-td'>"+value+"</td>";
+                    newRow += "</tr>"
+                    $('#'+datapoint+'-table tr:first').before(newRow);
+                } else {
+                    count_td.text(value);
+                }
                 if(tr.attr('class') == 'odd')
                     tr.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
                 else
@@ -146,7 +160,7 @@
                 console.log(evt.data);
                 message = JSON.parse(evt.data);
                 for(x = 0; x < message.stats.length; x++)
-                    addOrUpdate(message.stats[x].timestamp, message.stats[x].count, message.stats[x].datapoint, message.stats[x].duration);
+                    addOrUpdate(message.stats[x].timestamp, message.stats[x].date, message.stats[x].count, message.stats[x].datapoint, message.stats[x].duration);
             }
         </script>
         <div id="daily_chart" style="width: 49%; height: 400px; float: left;"></div>
