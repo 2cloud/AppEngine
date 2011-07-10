@@ -153,7 +153,9 @@ class SetQuotaHandler(webapp.RequestHandler):
 
     def post(self):
         quota = self.request.POST['quota']
-        models.updateQuota(quota)
+        newQuota = models.updateQuota(quota)
+        self.response.out.write("Quota updated to %s channels." %
+                newQuota.amount)
 
 
 class SubscribeHandler(webapp.RequestHandler):
@@ -199,7 +201,10 @@ class StatsHandler(webapp.RequestHandler):
                     user.updateLastSeen()
                 else:
                     break
-            datapoint.increment()
+            if datapoint.datapoint == 'quota':
+                datapoint.count = models.getQuota().amount
+            else:
+                datapoint.increment()
             json = {'datapoint': datapoint.datapoint, 'count': datapoint.count,
                     'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
                     'timestamp': int(time.mktime(
@@ -256,7 +261,7 @@ class StatsDashboard(webapp.RequestHandler):
 class StatsInit(webapp.RequestHandler):
     def get(self, duration='hour'):
         datapoints = ['registration', 'links', 'opened_links', 'channels',
-                'devices', 'connections', 'active_users']
+                'devices', 'connections', 'active_users', 'quota']
         for datapoint in datapoints:
             datapoint = models.getStats(datapoint, duration=duration)
 

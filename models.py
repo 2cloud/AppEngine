@@ -236,4 +236,5 @@ def updateQuota(level):
     quota = QuotaData(amount=int(level), date=timestamp.now())
     quota.put()
     memcache.set("quota", quota)
+    stats.record("quota_updated", str(quota.amount))
     return quota
