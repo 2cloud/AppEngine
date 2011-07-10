@@ -54,4 +54,12 @@ They're pretty friendly. Please do get in touch!
 
 ### Credits and Alternatives
 
+When this section is more than just placeholder, I need to remember to credit:
+
+* blog.notdot.net (basis of stats system)
+* docs.python.org (basis of timestamp.py)
+* Highcharts.com (Stats dashboard)
+* jQuery (Stats dashboard)
+* Chrome to Phone (Inspiration. Duh.)
+
 Who inspired this? What Open Source stuff are you using? Who can I use when I realise your code sucks?
