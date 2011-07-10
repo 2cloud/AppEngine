@@ -31,7 +31,7 @@ class ConnectedPage(webapp.RequestHandler):
             except:
                 device = models.DeviceData(user=user_data, name=name).save()
             last_links = models.getUnreadLinks(device)
-            channel = channels.Channel(device.address)
+            channel = channels.Channel(device.address, False)
             for link in last_links:
                 channel.queueLink(link)
             channel.send()
@@ -53,12 +53,19 @@ class MainPage(webapp.RequestHandler):
                 device = models.getDevice("%s/%s" % (user.email(), name))
             except models.DeviceDoesNotExistError:
                 device = models.DeviceData(user=user_data, name=name).save()
-            channel = channels.Channel(device.address)
+            over_quota = False
+            try:
+                channel = channels.Channel(device.address)
+                channel_token = channel.token
+            except channels.OverQuotaError:
+                over_quota = True
+                channel_token = 'overquota'
             template_values = {
-                'channel_id': channel.token,
+                'channel_id': channel_token,
                 'device': device.address,
                 'device_name': device.name,
-                'devices': user_data.getDevices()
+                'devices': user_data.getDevices(),
+                'over_quota': over_quota
             }
             path = os.path.join(os.path.dirname(__file__),
                 'devlinks_index.html')
@@ -103,6 +110,7 @@ class AddLinkPage(webapp.RequestHandler):
 class TokenPage(webapp.RequestHandler):
     def get(self, name=False):
         user = auth.getCurrentUser()
+        response = {}
         if user:
             try:
                 user_data = models.getUser(user)
@@ -114,21 +122,21 @@ class TokenPage(webapp.RequestHandler):
                 device = models.getDevice("%s/%s" % (user.email(), name))
             except models.DeviceDoesNotExistError:
                 device = models.DeviceData(user=user_data, name=name).save()
-            channel = channels.Channel(device.address)
-            response = {
-                    'token': channel.token
-            }
-            if channel.cached:
-                response['code'] = 304
-            else:
-                response['code'] = 200
-            self.response.out.write(simplejson.dumps(response))
+            try:
+                channel = channels.Channel(device.address)
+                response['token'] = channel.token
+                if channel.cached:
+                    response['code'] = 304
+                else:
+                    response['code'] = 200
+            except channels.OverQuotaError:
+                response['code'] = 500
+                response['token'] = 'overquota'
+                response['message'] = "Server is over quota."
         else:
-            response = {
-                    'code': 401,
-                    'message': 'Not logged in.'
-            }
-            self.response.out.write(simplejson.dumps(response))
+            response['code'] = 401
+            response['message'] = 'Not logged in.'
+        self.response.out.write(simplejson.dumps(response))
 
 
 class MarkAsReadHandler(webapp.RequestHandler):
@@ -230,7 +238,7 @@ class StatsDashboard(webapp.RequestHandler):
         except models.DeviceDoesNotExistError:
             device = models.DeviceData(user=user_data,
                     name="Web").save()
-        channel = channels.Channel(device.address)
+        channel = channels.Channel(device.address, override_quota=True)
         path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
         stats_data = models.StatsData.all().order("-date").fetch(1000)
         template_values = {
