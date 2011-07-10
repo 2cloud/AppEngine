@@ -281,7 +281,7 @@ class StatsDashboard(webapp.RequestHandler):
 
 class StatsInit(webapp.RequestHandler):
     def get(self, duration='hour'):
-        datapoints = ['registration', 'links', 'opened_links', 'channels',
+        datapoints = ['registrations', 'links', 'opened_links', 'channels',
                 'devices', 'connections', 'active_users', 'quota']
         for datapoint in datapoints:
             datapoint = models.getStats(datapoint, duration=duration)
