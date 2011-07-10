@@ -253,16 +253,30 @@ class StatsDashboard(webapp.RequestHandler):
                     name="Web").save()
         channel = channels.Channel(device.address, override_quota=True)
         path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
-        stats_data = models.StatsData.all().order("-date").fetch(1000)
+        daily_stats_data = models.StatsData.all().filter('duration =',
+                'day').order("-date").fetch(270)
+        hourly_stats_data = models.StatsData.all().filter('duration =',
+                'hour').order('-date').fetch(216)
         template_values = {
                 'channel_id': channel.token,
                 'stats': {'hour': {}, 'day': {}}
         }
         stats = template_values['stats']
-        for datapoint in stats_data:
-            if not (datapoint.datapoint in stats[datapoint.duration]):
-                stats[datapoint.duration][datapoint.datapoint] = []
-            stats[datapoint.duration][datapoint.datapoint].append({
+        for datapoint in daily_stats_data:
+            if not datapoint.datapoint in stats['day']:
+                stats['day'][datapoint.datapoint] = []
+            stats['day'][datapoint.datapoint].append({
+                    'name': datapoint.datapoint,
+                    'date': datapoint.date.strftime("%A %B %d, %Y"),
+                    'timestamp': int(time.mktime(
+                        datapoint.date.timetuple()) * 1000),
+                    'count': int(datapoint.count),
+                    'duration': datapoint.duration
+            })
+        for datapoint in hourly_stats_data:
+            if not (datapoint.datapoint in stats['hour']):
+                stats['hour'][datapoint.datapoint] = []
+            stats['hour'][datapoint.datapoint].append({
                     'name': datapoint.datapoint,
                     'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
                     'timestamp': int(time.mktime(
