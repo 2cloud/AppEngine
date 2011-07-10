@@ -77,6 +77,7 @@ class MainPage(webapp.RequestHandler):
 class AddLinkPage(webapp.RequestHandler):
     def post(self):
         user = auth.getCurrentUser()
+        response = {}
         if user:
             try:
                 user_data = models.getUser(user)
@@ -102,9 +103,21 @@ class AddLinkPage(webapp.RequestHandler):
                 receiver = device
             link = models.LinkData(url=self.request.get('link'),
                 sender=device, receiver=receiver).save()
-            channel = channels.Channel(receiver.address, False)
-            channel.sendLink(link)
-            self.response.out.write("Sent " + link.url + " to the cloud.")
+            if models.getQuota().amount > models.getStats(
+                    'quota').count:
+                channel = channels.Channel(receiver.address, False)
+                channel.sendLink(link)
+                response['code'] = 200
+                response['message'] = 'Sent %s to the cloud.' % link.url
+            else:
+                response['code'] = 503
+                response['message'] = ('Server is over quota.' +
+                        ' Your link has been stored and will be ' +
+                        'opened tomorrow.')
+        else:
+            response['code'] = 401
+            response['message'] = 'Not logged in.'
+        self.response.out.write(simplejson.dumps(response))
 
 
 class TokenPage(webapp.RequestHandler):
@@ -130,7 +143,7 @@ class TokenPage(webapp.RequestHandler):
                 else:
                     response['code'] = 200
             except channels.OverQuotaError:
-                response['code'] = 500
+                response['code'] = 503
                 response['token'] = 'overquota'
                 response['message'] = "Server is over quota."
         else:
