@@ -6,6 +6,12 @@ api_version: 1
 builtins:
 - appstats: on
 
+error_handlers:
+- file: default_error.html
+
+- error_code: over_quota
+  file: hard_quota.html
+
 handlers:
 - url: /js
   static_dir: js
