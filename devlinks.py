@@ -108,15 +108,13 @@ class AddLinkPage(webapp.RequestHandler):
                 channel = channels.Channel(receiver.address, False)
                 channel.sendLink(link)
                 response['code'] = 200
-                response['message'] = 'Sent %s to the cloud.' % link.url
+                response['link'] = link.url
             else:
                 response['code'] = 503
-                response['message'] = ('Server is over quota.' +
-                        ' Your link has been stored and will be ' +
-                        'opened tomorrow.')
+                response['link'] = link.url
         else:
             response['code'] = 401
-            response['message'] = 'Not logged in.'
+            response['link'] = self.request.get('link')
         self.response.out.write(simplejson.dumps(response))
 
 
@@ -311,6 +309,7 @@ class QuotaCountdown(webapp.RequestHandler):
         response['readable'] = str(countdown)
         response['seconds'] = countdown.seconds + (countdown.days * 24 * 3600)
         self.response.out.write(simplejson.dumps(response))
+
 
 application = webapp.WSGIApplication([
         ('/', MainPage),
