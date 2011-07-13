@@ -103,7 +103,7 @@ class AddLinkPage(webapp.RequestHandler):
                 receiver = device
             link = models.LinkData(url=self.request.get('link'),
                 sender=device, receiver=receiver).save()
-            if models.getQuota().amount > models.getStats(
+            if models.getQuota().amount <= models.getStats(
                     'quota').count:
                 channel = channels.Channel(receiver.address, False)
                 channel.sendLink(link)
