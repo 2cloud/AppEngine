@@ -149,6 +149,15 @@
             th {
                 border-bottom: 3px #000 solid;
             }
+            .hidden {
+                display: none;
+            }
+            br.clear {
+                clear: both;
+            }
+            img.clear {
+                display: none;
+            }
         </style>
     </head>
     <body>
@@ -168,7 +177,7 @@
         <br style="clear: both;" />
         <div style="float: left; width: 49%;">
         {% for datapoint in stats.day %}
-        <div style="float: left; padding: 20px;">
+        <div style="float: left; padding: 20px; width: 42%">
         <h2 style="text-align: center;">Daily {{ datapoint.0.name }}</h2>
         <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
             <tr>
@@ -182,11 +191,11 @@
 
             </tr>{% endfor %}
         </table>
-    </div>{% endfor %}
+    </div><{% cycle img,br,img,br %} class="clear" />{% endfor %}
     </div>
     <div style="float: left; width: 49%;">
         {% for datapoint in stats.hour %}
-        <div style="float: left; padding: 20px;">
+        <div style="float: left; padding: 20px; width: 42%;">
         <h2 style="text-align: center;">Hourly {{ datapoint.0.name }}</h2>
         <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
             <tr>
@@ -200,7 +209,7 @@
 
             </tr>{% endfor %}
         </table>
-    </div>{% endfor %}
+    </div><{% cycle img,br %} class="clear" />{% endfor %}
     </div>
     <br style="clear: both;" />
     </body>
