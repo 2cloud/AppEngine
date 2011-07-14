@@ -103,18 +103,20 @@ class AddLinkPage(webapp.RequestHandler):
                 receiver = device
             link = models.LinkData(url=self.request.get('link'),
                 sender=device, receiver=receiver).save()
-            if models.getQuota().amount >= models.getStats(
-                    'channels').count:
+            if models.getQuota().amount > models.getStats(
+                    'quota').count:
                 channel = channels.Channel(receiver.address, False)
                 channel.sendLink(link)
                 response['code'] = 200
-                response['link'] = link.url
+                response['message'] = 'Sent %s to the cloud.' % link.url
             else:
                 response['code'] = 503
-                response['link'] = link.url
+                response['message'] = ('Server is over quota.' +
+                        ' Your link has been stored and will be ' +
+                        'opened tomorrow.')
         else:
             response['code'] = 401
-            response['link'] = self.request.get('link')
+            response['message'] = 'Not logged in.'
         self.response.out.write(simplejson.dumps(response))
 
 
@@ -311,6 +313,21 @@ class QuotaCountdown(webapp.RequestHandler):
         self.response.out.write(simplejson.dumps(response))
 
 
+class PaymentNotificationHandler(webapp.RequestHandler):
+    def post(self):
+        user = auth.getCurrentUser()
+        response = {}
+        if user:
+            try:
+                user_data = models.getUser(user)
+            except models.UserDoesNotExistError:
+                user_data = models.UserData(user=user).save()
+            payment_data = models.PaymentData(date=timestamp.now(),
+                    user=user_data, item=self.request.get("item_id"),
+                    order_number=self.request.get("order_number"),
+                    status="unconfirmed")
+            payment_data.save()
+
 application = webapp.WSGIApplication([
         ('/', MainPage),
         ('/links/add', AddLinkPage),
@@ -324,7 +341,8 @@ application = webapp.WSGIApplication([
         ('/stats/init/(.*)', StatsInit),
         ('/quota/countdown', QuotaCountdown),
         ('/quota/set', SetQuotaHandler),
-        ('/_ah/prospective_search', StatsHandler)
+        ('/_ah/prospective_search', StatsHandler),
+        ('/payments/notification', PaymentNotificationHandler)
         ], debug=True)
 
 

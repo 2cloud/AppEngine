@@ -23,6 +23,8 @@ class UserData(db.Model):
     user = db.UserProperty()
     joined = db.DateTimeProperty(auto_now_add=True)
     last_seen = db.DateTimeProperty(auto_now_add=True)
+    immunity = db.DateTimeProperty()
+    immunity_tokens = db.IntegerProperty()
 
     def updateLastSeen(self):
         self.last_seen = timestamp.now()
@@ -43,6 +45,22 @@ class UserData(db.Model):
             devices = self.devices.fetch(1000)
             memcache.set("user_%s_devices" % self.user.user_id(), devices)
         return devices
+
+    def setExplicitImmunity(self, stamp):
+        self.immunity = stamp
+        self.save()
+
+    def setRelativeImmunity(self, offset):
+        self.immunity = timestamp.now() + offset
+        self.save()
+
+    def incrementImmunityTokens(self, value=1):
+        self.immunity_tokens = self.immunity_tokens + 1
+        self.save()
+
+    def setImmunityTokens(self, value):
+        self.immunity_tokens = value
+        self.save()
 
 
 class DeviceDoesNotExistError(Exception):
@@ -149,6 +167,24 @@ class StatsData(db.Model):
 class QuotaData(db.Model):
     date = db.DateTimeProperty()
     amount = db.IntegerProperty()
+
+
+class PaymentData(db.Model):
+    date = db.DateTimeProperty()
+    user = db.ReferenceProperty(UserData, collection_name="payments")
+    order_number = db.StringProperty()
+    item = db.StringProperty()
+    status = db.StringProperty()
+
+    def save(self):
+        self.put()
+        stamp = timestamp.now()
+        stamp.replace(day=stamp.day + 1, hour=0)
+        user.setExplicitImmunity(stamp)
+        stats.record("payment", simplejson.dumps({
+            "user": self.user.user.email(),
+            "item": self.item
+        }))
 
 
 class StatsSubscription(db.Model):
