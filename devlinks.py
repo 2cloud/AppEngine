@@ -55,7 +55,8 @@ class MainPage(webapp.RequestHandler):
                 device = models.DeviceData(user=user_data, name=name).save()
             over_quota = False
             try:
-                channel = channels.Channel(device.address)
+                channel = channels.Channel(device.address,
+                        override_quota=user_data.immune())
                 channel_token = channel.token
             except channels.OverQuotaError:
                 over_quota = True
@@ -103,20 +104,18 @@ class AddLinkPage(webapp.RequestHandler):
                 receiver = device
             link = models.LinkData(url=self.request.get('link'),
                 sender=device, receiver=receiver).save()
-            if models.getQuota().amount > models.getStats(
-                    'quota').count:
+            if models.getQuota().amount >= models.getStats(
+                    'channels').count or user_data.immune():
                 channel = channels.Channel(receiver.address, False)
                 channel.sendLink(link)
                 response['code'] = 200
-                response['message'] = 'Sent %s to the cloud.' % link.url
+                response['link'] = link.url
             else:
                 response['code'] = 503
-                response['message'] = ('Server is over quota.' +
-                        ' Your link has been stored and will be ' +
-                        'opened tomorrow.')
+                response['link'] = link.url
         else:
             response['code'] = 401
-            response['message'] = 'Not logged in.'
+            response['link'] = self.request.get('link')
         self.response.out.write(simplejson.dumps(response))
 
 
@@ -136,7 +135,8 @@ class TokenPage(webapp.RequestHandler):
             except models.DeviceDoesNotExistError:
                 device = models.DeviceData(user=user_data, name=name).save()
             try:
-                channel = channels.Channel(device.address)
+                channel = channels.Channel(device.address,
+                        override_quota=user_data.immune())
                 response['token'] = channel.token
                 if channel.cached:
                     response['code'] = 304

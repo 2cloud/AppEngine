@@ -62,6 +62,12 @@ class UserData(db.Model):
         self.immunity_tokens = value
         self.save()
 
+    def immune(self):
+        if self.immunity > timestamp.now():
+            return True
+        else:
+            return False
+
 
 class DeviceDoesNotExistError(Exception):
     address = None
@@ -179,8 +185,10 @@ class PaymentData(db.Model):
     def save(self):
         self.put()
         stamp = timestamp.now()
-        stamp.replace(day=stamp.day + 1, hour=0)
-        user.setExplicitImmunity(stamp)
+        stamp = stamp.replace(day=stamp.day + 1, hour=0, minute=0, 
+                second=0, microsecond=0)
+        self.date = stamp
+        self.user.setExplicitImmunity(stamp)
         stats.record("payment", simplejson.dumps({
             "user": self.user.user.email(),
             "item": self.item
