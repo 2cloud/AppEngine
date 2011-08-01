@@ -63,7 +63,7 @@ class UserData(db.Model):
         self.save()
 
     def immune(self):
-        if self.immunity > timestamp.now():
+        if self.immunity is not None and self.immunity > timestamp.now():
             return True
         else:
             return False
