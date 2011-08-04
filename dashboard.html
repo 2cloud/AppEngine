@@ -3,102 +3,9 @@
         <title>Stats Dashboard</title>
         <script src="/_ah/channel/jsapi"></script>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" type="text/javascript"></script>
-        <script src="/js/highcharts.js" type="text/javascript"></script>
         <script src="/js/jquery.color.js" type="text/javascript"></script>
         <script type="text/javascript">
-            var chart1;
-            var chart2;
-            $(document).ready(function() {
-                chart1 = new Highcharts.Chart({
-                    chart: {
-                        renderTo: 'hourly_chart',
-                        type: 'area'
-                    },
-                    title: {
-                        text: 'Hourly Stats'
-                    },
-                    xAxis: {
-                        title: {
-                            text: 'Date'
-                        },
-                        type: 'datetime',
-                        maxZoom: 86400000
-                    },
-                    yAxis: {
-                        title: {
-                            text: 'Number'
-                        }
-                    },
-                    series: [{% for datapoint in stats.hour %}{
-                        id: '{{ datapoint.0.name }}-hour',
-                        name: '{{ datapoint.0.name }}',
-                        data: [{% for value in datapoint %}
-                              [{{value.timestamp}}, {{value.count}}],
-                              {% endfor %}]
-                            },{% endfor %}
-                    ],
-                    credits: {
-                        enabled: false
-                    },
-                });
-
-                chart2 = new Highcharts.Chart({
-                    chart: {
-                        renderTo: 'daily_chart',
-                        type: 'area'
-                    },
-                    title: {
-                        text: 'Daily Stats'
-                    },
-                    xAxis: {
-                        title: {
-                            text: 'Date'
-                        },
-                        type: 'datetime',
-                   },
-                    series: [{% for datapoint in stats.day %}{
-                        id: '{{ datapoint.0.name }}-day',
-                        name: '{{ datapoint.0.name }}',
-                        data: [{% for value in datapoint %}
-                              [{{ value.timestamp }}, {{ value.count }}],
-                              {% endfor %}]
-                            },{% endfor %}
-                    ],
-                    credits: {
-                        enabled: false
-                    }
-                });
-            });
-            
             function addOrUpdate(timestamp, date, value, datapoint, duration) {
-                console.log(timestamp +", "+ value +", "+datapoint+", "+duration);
-                var updated = false;
-                chart = null;
-                if(duration == 'hour')
-                    chart = chart1;
-                else
-                    chart = chart2;
-                console.log(chart);
-                var series = chart.get(datapoint+'-'+duration);
-                if(series == null) {
-                    chart.addSeries({
-                        id: datapoint+'-'+duration,
-                        name: datapoint,
-                        data: [[timestamp, value]]
-                        });
-                    series = chart.get(datapoint);
-                }
-                for(d=0; d < series.data.length; d++) {
-                    if(series.data[d].x == timestamp) {
-                        series.data[d].update(value);
-                        updated = true;
-                        d = series.data.length;
-                        continue;
-                    }
-                }
-                if(!updated) {
-                    series.addPoint([timestamp, value]);
-                }
                 var table = $('#'+datapoint+'-table');
                 var firstRow = $('#'+datapoint+'-table tr:first');
                 var tr = $('#'+datapoint+'_'+timestamp+'-tr');
@@ -172,9 +79,6 @@
                     addOrUpdate(message.stats[x].timestamp, message.stats[x].date, message.stats[x].count, message.stats[x].datapoint, message.stats[x].duration);
             }
         </script>
-        <div id="daily_chart" style="width: 49%; height: 400px; float: left;"></div>
-        <div id="hourly_chart" style="width: 49%; height: 400px; float: left;"></div>
-        <br style="clear: both;" />
         <div style="float: left; width: 49%;">
         {% for datapoint in stats.day %}
         <div style="float: left; padding: 20px; width: 42%">
