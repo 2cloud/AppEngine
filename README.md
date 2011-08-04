@@ -15,8 +15,13 @@ server.
 
 ### Installation Instructions
 
-Installation is as simple as getting an App Engine account and following Google's 
-instructions. We'll have a more detailed guide here soon.
+We tried to make installation as streamlined as possible. You just need to 
+download the source (use git, or the download button) and change the identifier 
+in app.yaml. Then use the 
+[http://code.google.com/appengine/downloads.html#Google_App_Engine_SDK_for_Python](App 
+Engine SDK) to sync it just like you 
+[http://code.google.com/appengine/docs/python/gettingstarted/uploading.html](normally 
+would).
 
 ### Where to Get Help
 
@@ -37,7 +42,23 @@ If you don't use _any_ of those... you're kind of out of luck.
 
 ### Contribution Guidelines
 
-Tell me how I can help out. What features do we want? What are the standards?
+The quickest, easiest, and most assured way to contribute is to be a beta tester.
+Simply join the [http://groups.google.com/group/2cloud-beta](mailing list) and 
+wait for a new beta to be released. Try and break it. Submit feedback. Wash, 
+rinse, repeat.
+
+If you're interested in contributing code, we use different guidelines for each 
+part of our app. This is driven by necessity; you can't use PEP-8 on Java, for 
+example. Our App Engine guidelines are simple:
+
+* If possible, have unit tests written for what you're patching
+* Explain clearly in your pull request what you're patching and why
+* Make sure your code follows the style laid out in PEP-8
+
+That's pretty much it. We're laid back. The best way to figure out what's on our 
+to-do list is to look at the [https://www.github.com/2cloud/AppEngine/issues](issue 
+tracker) or ask on the [http://groups.google.com/group/2cloud-dev](dev mailing list). 
+Whatever you work on should be something _you_ want to see implemented, though.
 
 ### Contributors
 
@@ -54,12 +75,15 @@ They're pretty friendly. Please do get in touch!
 
 ### Credits and Alternatives
 
-When this section is more than just placeholder, I need to remember to credit:
+One of the great parts about being an open source project is how often we get to 
+stand on the shoulders of giants. Without these people and projects, we couldn't 
+do what we do.
 
 * blog.notdot.net (basis of stats system)
 * docs.python.org (basis of timestamp.py)
-* Highcharts.com (Stats dashboard)
 * jQuery (Stats dashboard)
-* Chrome to Phone (Inspiration. Duh.)
+* Chrome to Phone (Inspiration)
 
-Who inspired this? What Open Source stuff are you using? Who can I use when I realise your code sucks?
+There are some alternatives to 2cloud out there, and we encourage you to try them 
+out. Use what works best for you. You can find an up-to-date list on 
+[http://links.2cloudproject.com/competition](our website).
