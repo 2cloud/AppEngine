@@ -17,11 +17,10 @@ server.
 
 We tried to make installation as streamlined as possible. You just need to 
 download the source (use git, or the download button) and change the identifier 
-in app.yaml. Then use the 
-[http://code.google.com/appengine/downloads.html#Google_App_Engine_SDK_for_Python](App 
-Engine SDK) to sync it just like you 
-[http://code.google.com/appengine/docs/python/gettingstarted/uploading.html](normally 
-would).
+in app.yaml. Then use the [App Engine
+SDK](http://code.google.com/appengine/downloads.html#Google_App_Engine_SDK_for_Python)
+to sync it just like you [normally 
+would](http://code.google.com/appengine/docs/python/gettingstarted/uploading.html).
 
 ### Where to Get Help
 
@@ -43,7 +42,7 @@ If you don't use _any_ of those... you're kind of out of luck.
 ### Contribution Guidelines
 
 The quickest, easiest, and most assured way to contribute is to be a beta tester.
-Simply join the [http://groups.google.com/group/2cloud-beta](mailing list) and 
+Simply join the [mailing list](http://groups.google.com/group/2cloud-beta) and 
 wait for a new beta to be released. Try and break it. Submit feedback. Wash, 
 rinse, repeat.
 
@@ -56,8 +55,8 @@ example. Our App Engine guidelines are simple:
 * Make sure your code follows the style laid out in PEP-8
 
 That's pretty much it. We're laid back. The best way to figure out what's on our 
-to-do list is to look at the [https://www.github.com/2cloud/AppEngine/issues](issue 
-tracker) or ask on the [http://groups.google.com/group/2cloud-dev](dev mailing list). 
+to-do list is to look at the [issue tracker](https://www.github.com/2cloud/AppEngine/issues)
+or ask on the [dev mailing list](http://groups.google.com/group/2cloud-dev). 
 Whatever you work on should be something _you_ want to see implemented, though.
 
 ### Contributors
@@ -86,4 +85,4 @@ do what we do.
 
 There are some alternatives to 2cloud out there, and we encourage you to try them 
 out. Use what works best for you. You can find an up-to-date list on 
-[http://links.2cloudproject.com/competition](our website).
+[our website](http://links.2cloudproject.com/competition).
