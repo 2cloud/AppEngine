@@ -166,7 +166,7 @@ class SetQuotaHandler(webapp.RequestHandler):
     def get(self):
         quota = models.getQuota()
         cur_quota = 0
-        if quota.amount:
+        if type(quota) == type(db.Key()):
             cur_quota = quota.amount
         vars = {
                 'current': cur_quota
