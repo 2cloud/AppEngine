@@ -165,8 +165,11 @@ class MarkAsReadHandler(webapp.RequestHandler):
 class SetQuotaHandler(webapp.RequestHandler):
     def get(self):
         quota = models.getQuota()
+        cur_quota = 0
+        if quota.amount:
+            cur_quota = quota.amount
         vars = {
-                'current': quota.amount
+                'current': cur_quota
         }
         logging.debug(quota.amount)
         path = os.path.join(os.path.dirname(__file__), 'quota.html')
