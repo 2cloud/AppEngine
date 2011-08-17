@@ -5,7 +5,7 @@ from django.utils import simplejson
 from google.appengine.ext import webapp, db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
-from google.appengine.api import users, prospective_search
+from google.appengine.api import users, prospective_search, memcache
 import time
 
 import auth
@@ -165,6 +165,7 @@ class MarkAsReadHandler(webapp.RequestHandler):
 class SetQuotaHandler(webapp.RequestHandler):
     def get(self):
         quota = models.getQuota()
+        logging.info("Quota: %s" % quota)
         cur_quota = 0
         if type(quota) == type(db.Key()):
             cur_quota = quota.amount
@@ -299,7 +300,7 @@ class StatsDashboard(webapp.RequestHandler):
 class StatsInit(webapp.RequestHandler):
     def get(self, duration='hour'):
         datapoints = ['registrations', 'links', 'opened_links', 'channels',
-                'devices', 'connections', 'active_users', 'quota']
+                'devices', 'connections', 'active_users', 'quota', 'payments']
         for datapoint in datapoints:
             datapoint = models.getStats(datapoint, duration=duration)
 
@@ -331,6 +332,12 @@ class PaymentNotificationHandler(webapp.RequestHandler):
                     status="unconfirmed")
             payment_data.save()
 
+
+class ClearCacheHandler(webapp.RequestHandler):
+    def get(self):
+        memcache.flush_all()
+        self.response.out.write("Cache cleared.")
+
 application = webapp.WSGIApplication([
         ('/', MainPage),
         ('/links/add', AddLinkPage),
@@ -345,7 +352,8 @@ application = webapp.WSGIApplication([
         ('/quota/countdown', QuotaCountdown),
         ('/quota/set', SetQuotaHandler),
         ('/_ah/prospective_search', StatsHandler),
-        ('/payments/notification', PaymentNotificationHandler)
+        ('/payments/notification', PaymentNotificationHandler),
+        ('/cache/clear', ClearCacheHandler),
         ], debug=True)
 
 
