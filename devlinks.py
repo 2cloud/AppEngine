@@ -224,6 +224,7 @@ class StatsHandler(webapp.RequestHandler):
                     break
                 if user.last_seen.date() < timestamp.now().date():
                     user.updateLastSeen()
+                    user.save()
                 else:
                     break
             if datapoint.datapoint == 'quota':
