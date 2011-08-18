@@ -5,31 +5,55 @@
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" type="text/javascript"></script>
         <script src="/js/jquery.color.js" type="text/javascript"></script>
         <script type="text/javascript">
-            function addOrUpdate(timestamp, date, value, datapoint, duration) {
-                var table = $('#'+datapoint+'-table');
-                var firstRow = $('#'+datapoint+'-table tr:first');
-                var tr = $('#'+datapoint+'_'+timestamp+'-tr');
-                var date_td = $('#'+datapoint+'_'+timestamp+'_date-td');
-                var count_td = $('#'+datapoint+'_'+timestamp+'_count-td');
-                if(tr.length == 0) {
-                    if(firstRow.attr('class') == 'odd') {
-                        newClass = 'even';
-                    } else {
-                        newClass = 'odd';
-                    }
-                    newRow = "<tr class='"+newClass+"' id='"+datapoint+"_"+timestamp+"-tr'>";
-                    newRow += "<td id='"+datapoint+"_"+timestamp+"_date-td'>"+date+"</td>";
-                    newRow += "<td id='"+datapoint+"_"+timestamp+"_count-td'>"+value+"</td>";
-                    newRow += "</tr>"
-                    $('#'+datapoint+'-table tr:first').before(newRow);
-                } else {
-                    count_td.text(value);
-                }
+            function addOrUpdate(datestamp, date, datapoint, hour, value) {
+                checkAndCreateTable(datestamp, date);
+                checkAndCreateTr(datestamp, datapoint);
+                tr = $("#"+datestamp+"_"+datapoint);
+                td = $("#"+datestamp+"_"+datapoint+"_"+hour);
+                td.text(value);
                 if(tr.attr('class') == 'odd')
-                    tr.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
+                    td.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
                 else
-                    tr.animate({backgroundColor: '#eeffff'}).animate({backgroundColor: '#cceeff'});
+                    td.animate({backgroundColor: '#eeffff'}).animate({backgroundColor: '#cceeff'});
             }
+
+            function checkAndCreateTable(datestamp, date) {
+                if($("#"+datestamp).length > 0) {
+                    return;
+                }
+                table = $('<table>').attr('id', datestamp);
+                tr = $('<tr>');
+                tr.append($('<th>').attr('colspan', '2').text(date));
+                for(i=0; i < 24; i++) {
+                    tr.append($('<th>').text(i));
+                }
+                table.append(tr);
+                $("#wrap").append(table);
+                return;
+            }
+
+            function checkAndCreateTr(datestamp, datapoint) {
+                if($("#"+datestamp+"_"+datapoint).length > 0) {
+                    return;
+                }
+                table = $("#"+datestamp);
+                last_tr = $("#"+datestamp+">tbody>tr:last");
+                last_class = last_tr.attr('class');
+                if(last_class == 'odd') {
+                    new_class = 'even';
+                } else {
+                    new_class = 'odd';
+                }
+                tr = $('<tr>').attr('id', datestamp+"_"+datapoint).attr('class', class);
+                tr.append($('<td>').attr('id', datestamp+"_"+datapoint+"_name").text(datapoint));
+                tr.append($('<td>').attr('id', datestamp+"_"+datapoint+"_total"));
+                for(i=0; i < 24; i++) {
+                    tr.append($('<td>').attr('id', datestamp+"_"+datapoint+"_"+i));
+                }
+                table.append(tr);
+                return;
+            }
+
         </script>
         <style>
             h2 {
@@ -59,12 +83,6 @@
             .hidden {
                 display: none;
             }
-            br.clear {
-                clear: both;
-            }
-            img.clear {
-                display: none;
-            }
         </style>
     </head>
     <body>
@@ -76,45 +94,69 @@
                 console.log(evt.data);
                 message = JSON.parse(evt.data);
                 for(x = 0; x < message.stats.length; x++)
-                    addOrUpdate(message.stats[x].timestamp, message.stats[x].date, message.stats[x].count, message.stats[x].datapoint, message.stats[x].duration);
+                    addOrUpdate(message.stats[x].datestamp, message.stats[x].date, message.stats[x].datapoint, message.stats[x].hour, message.stats[x].value);
             }
         </script>
-        <div style="float: left; width: 49%;">
-        {% for datapoint in stats.day %}
-        <div style="float: left; padding: 20px; width: 42%">
-        <h2 style="text-align: center;">Daily {{ datapoint.0.name }}</h2>
-        <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
+        <div id="wrap">
+            {% for date in stats.values|dictsortreversed:"datestamp" %}
+        <table id="{{ date.datestamp }}">
             <tr>
-                <th>Date</th>
-                <th>Count</th>
+                <th colspan="2">{{ date.date|date:"D, M d y" }}</th>
+                <th>0</th>
+                <th>1</th>
+                <th>2</th>
+                <th>3</th>
+                <th>4</th>
+                <th>5</th>
+                <th>6</th>
+                <th>7</th>
+                <th>8</th>
+                <th>9</th>
+                <th>10</th>
+                <th>11</th>
+                <th>12</th>
+                <th>13</th>
+                <th>14</th>
+                <th>15</th>
+                <th>16</th>
+                <th>17</th>
+                <th>18</th>
+                <th>19</th>
+                <th>20</th>
+                <th>21</th>
+                <th>22</th>
+                <th>23</th>
             </tr>
-            {% for value in datapoint %}
-            <tr class="{% cycle odd,even %}" id="{{ value.name }}_{{ value.timestamp }}-tr">
-                <td id="{{ value.name }}_{{ value.timestamp }}_name-td">{{ value.date }}</td>
-                <td style="text-align: right;" id="{{ value.name }}_{{ value.timestamp }}_count-td">{{ value.count }}</td>
-
+            {% for datapoint in date.datapoints.values|dictsort:"datapoint" %}
+            <tr class="{% cycle odd,even %}" id="{{ date.datestamp }}_{{ datapoint.datapoint }}">
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_name">{{ datapoint.datapoint }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_total">{{ datapoint.values.total.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_0">{{ datapoint.values.0.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_1">{{ datapoint.values.1.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_2">{{ datapoint.values.2.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_3">{{ datapoint.values.3.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_4">{{ datapoint.values.4.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_5">{{ datapoint.values.5.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_6">{{ datapoint.values.6.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_7">{{ datapoint.values.7.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_8">{{ datapoint.values.8.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_9">{{ datapoint.values.9.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_10">{{ datapoint.values.10.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_11">{{ datapoint.values.11.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_12">{{ datapoint.values.12.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_13">{{ datapoint.values.13.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_14">{{ datapoint.values.14.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_15">{{ datapoint.values.15.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_16">{{ datapoint.values.16.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_17">{{ datapoint.values.17.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_18">{{ datapoint.values.18.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_19">{{ datapoint.values.19.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_20">{{ datapoint.values.20.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_21">{{ datapoint.values.21.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_22">{{ datapoint.values.22.count }}</td>
+                <td id="{{ date.datestamp }}_{{ datapoint.datapoint }}_23">{{ datapoint.values.23.count }}</td>
             </tr>{% endfor %}
-        </table>
-    </div><{% cycle img,br,img,br %} class="clear" />{% endfor %}
-    </div>
-    <div style="float: left; width: 49%;">
-        {% for datapoint in stats.hour %}
-        <div style="float: left; padding: 20px; width: 42%;">
-        <h2 style="text-align: center;">Hourly {{ datapoint.0.name }}</h2>
-        <table style="margin: 0 auto;" id="{{ datapoint.0.name }}-table">
-            <tr>
-                <th>Date</th>
-                <th>Count</th>
-            </tr>
-            {% for value in datapoint %}
-            <tr class="{% cycle odd,even %}" id="{{ value.name }}_{{ value.timestamp }}-tr">
-                <td id="{{ value.name }}_{{ value.timestamp }}_name-td">{{ value.date }}</td>
-                <td style="text-align: right;" id="{{ value.name }}_{{ value.timestamp }}_count-td">{{ value.count }}</td>
-
-            </tr>{% endfor %}
-        </table>
-    </div><{% cycle img,br %} class="clear" />{% endfor %}
-    </div>
-    <br style="clear: both;" />
+        </table><br />
+        {% endfor %}</div>
     </body>
 </html>

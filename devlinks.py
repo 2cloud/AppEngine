@@ -231,11 +231,13 @@ class StatsHandler(webapp.RequestHandler):
                 datapoint.count = models.getQuota().amount
             else:
                 datapoint.increment()
-            json = {'datapoint': datapoint.datapoint, 'count': datapoint.count,
-                    'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
-                    'timestamp': int(time.mktime(
-                        datapoint.date.timetuple())) * 1000,
-                    'duration': datapoint.duration}
+            json = {'datapoint': datapoint.datapoint, 'value': datapoint.count,
+                    'date': datapoint.date.strftime("%D, %M %d %y"),
+                    'datestamp': int(time.mktime(
+                        datapoint.date.date().timetuple())) * 1000,
+                    'hour': datapoint.date.hour}
+            if datapoint.duration == "day":
+                json['hour'] = "total"
             stats_json.append(json)
         db.put(datapoints)
         push = channels.Channel("stats@2cloudproject.com/Web", False)
@@ -258,43 +260,39 @@ class StatsDashboard(webapp.RequestHandler):
                     name="Web").save()
         channel = channels.Channel(device.address, override_quota=True)
         path = os.path.join(os.path.dirname(__file__), 'dashboard.html')
-        daily_stats_data = models.StatsData.all().filter('duration =',
-                'day').order("-date").fetch(270)
-        hourly_stats_data = models.StatsData.all().filter('duration =',
-                'hour').order('-date').fetch(216)
+        stats_data = models.StatsData.all().order("-date").fetch(1000)
         template_values = {
                 'channel_id': channel.token,
-                'stats': {'hour': {}, 'day': {}}
+                'stats': {}
         }
         stats = template_values['stats']
-        for datapoint in daily_stats_data:
-            if not datapoint.datapoint in stats['day']:
-                stats['day'][datapoint.datapoint] = []
-            stats['day'][datapoint.datapoint].append({
-                    'name': datapoint.datapoint,
-                    'date': datapoint.date.strftime("%A %B %d, %Y"),
-                    'timestamp': int(time.mktime(
-                        datapoint.date.timetuple()) * 1000),
-                    'count': int(datapoint.count),
-                    'duration': datapoint.duration
-            })
-        for datapoint in hourly_stats_data:
-            if not (datapoint.datapoint in stats['hour']):
-                stats['hour'][datapoint.datapoint] = []
-            stats['hour'][datapoint.datapoint].append({
-                    'name': datapoint.datapoint,
-                    'date': datapoint.date.strftime("%A %B %d, %Y at %H:%M"),
-                    'timestamp': int(time.mktime(
-                        datapoint.date.timetuple()) * 1000),
-                    'count': int(datapoint.count),
-                    'duration': datapoint.duration
-            })
-        stats['hour'] = stats['hour'].values()
-        stats['day'] = stats['day'].values()
-        stats['hour'] = sorted(stats['hour'],
-                key=lambda stat: stat[0]['name'])
-        stats['day'] = sorted(stats['day'], key=lambda stat: stat[0]['name'])
+        for datapoint in stats_data:
+            datestamp = int(time.mktime(
+                datapoint.date.date().timetuple()) * 1000)
+            hour = datapoint.date.hour
+            if datestamp not in stats:
+                stats[datestamp] = {
+                        'datestamp': datestamp,
+                        'date': datapoint.date,
+                        'datapoints': {}
+                    }
+            if datapoint.datapoint not in stats[datestamp]['datapoints']:
+                stats[datestamp]['datapoints'][datapoint.datapoint] = {
+                        'datapoint': datapoint.datapoint,
+                        'values': {}
+                    }
+            point_id = "%s" % hour
+            if datapoint.duration == "day":
+                point_id = "total"
+            stats[datestamp]['datapoints'][datapoint.datapoint]['values'][point_id] = {
+                    'datapoint': datapoint.datapoint,
+                    'datestamp': datestamp,
+                    'hour':      hour,
+                    'count':     int(datapoint.count),
+                    'duration':  datapoint.duration
+            }
         template_values['stats'] = stats
+        logging.info(template_values)
         self.response.out.write(template.render(path, template_values))
 
 
