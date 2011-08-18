@@ -19,6 +19,7 @@ import logging
 
 class ConnectedPage(webapp.RequestHandler):
     def post(self, name="Chrome"):
+        self.response.headers.add_header("Access-Control-Allow-Origin", "*")
         user = auth.getCurrentUser()
         device = None
         if user:
@@ -77,6 +78,7 @@ class MainPage(webapp.RequestHandler):
 
 class AddLinkPage(webapp.RequestHandler):
     def post(self):
+        self.response.headers.add_header("Access-Control-Allow-Origin", "*")
         user = auth.getCurrentUser()
         response = {}
         if user:
@@ -121,6 +123,7 @@ class AddLinkPage(webapp.RequestHandler):
 
 class TokenPage(webapp.RequestHandler):
     def get(self, name=False):
+        self.response.headers.add_header("Access-Control-Allow-Origin", "*")
         user = auth.getCurrentUser()
         response = {}
         if user:
@@ -154,6 +157,7 @@ class TokenPage(webapp.RequestHandler):
 
 class MarkAsReadHandler(webapp.RequestHandler):
     def post(self, json=False):
+        self.response.headers.add_header("Access-Control-Allow-Origin", "*")
         json = self.request.get('links')
         if json != False:
             sent_data = simplejson.loads(json)
