@@ -11,10 +11,15 @@
                 tr = $("#"+datestamp+"_"+datapoint);
                 td = $("#"+datestamp+"_"+datapoint+"_"+hour);
                 td.text(value);
-                if(tr.attr('class') == 'odd')
+                total = $("#"+datestamp+"_"+datapoint+"_total");
+                total.text(parseInt(total.text()) + parseInt(value));
+                if(tr.attr('class') == 'odd') {
                     td.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
-                else
+                    total.animate({backgroundColor: '#cceeff'}).animate({backgroundColor: '#eeffff'});
+                } else {
                     td.animate({backgroundColor: '#eeffff'}).animate({backgroundColor: '#cceeff'});
+                    total.animate({backgroundColor: '#eeffff'}).animate({backgroundColor: '#cceeff'});
+                }
             }
 
             function checkAndCreateTable(datestamp, date) {
