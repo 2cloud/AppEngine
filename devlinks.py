@@ -221,12 +221,19 @@ class StatsHandler(webapp.RequestHandler):
                 try:
                     user = models.getUser(record_value['user'], False)
                 except models.UserDoesNotExistError:
-                    break
-                if user.last_seen.date() < timestamp.now().date():
-                    user.updateLastSeen()
+                    continue
+                last_seen = user.last_seen
+                new_last_seen = timestamp.now()
+                if datapoint.duration == "day":
+                    last_seen = last_seen.replace(hour=0, minute=0, second=0,
+                            microsecond=0)
+                    new_last_seen = new_last_seen.replace(hour=0, minute=0, 
+                            second=0, microsecond=0)
+                if last_seen < new_last_seen:
+                    user.updateLastSeen(new_last_seen)
                     user.save()
                 else:
-                    break
+                    continue
             if datapoint.datapoint == 'quota':
                 datapoint.count = models.getQuota().amount
             else:

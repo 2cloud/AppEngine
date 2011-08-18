@@ -26,8 +26,11 @@ class UserData(db.Model):
     immunity = db.DateTimeProperty()
     immunity_tokens = db.IntegerProperty()
 
-    def updateLastSeen(self):
-        self.last_seen = timestamp.now()
+    def updateLastSeen(self, newtimestamp=None):
+        if newtimestamp is None:
+            self.last_seen = timestamp.now()
+        else:
+            self.last_seen = newtimestamp
 
     def save(self):
         try:
