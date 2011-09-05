@@ -3,6 +3,7 @@ from google.appengine.api import channel, memcache
 
 import models
 import stats
+import logging
 
 
 class OverQuotaError(Exception):
@@ -39,8 +40,14 @@ class Channel():
                 memcache.set("token_%s" % self.address, self.token, time=7200)
 
     def send(self):
-        channel.send_message(self.address, simplejson.dumps(self.message))
-        self.message.clear()
+        logging.info(simplejson.dumps(self.message))
+        tmp_msg = {}
+        while len(tmp_msg) < 10 and len(self.message) > 0:
+            key, value = self.message.popitem()
+            tmp_msg[key] = value
+        channel.send_message(self.address, simplejson.dumps(tmp_msg))
+        if len(self.message) > 0:
+            self.send()
 
     def queueLink(self, link):
         if 'links' not in self.message:
