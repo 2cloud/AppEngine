@@ -6,6 +6,7 @@ from google.appengine.ext import webapp, db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api import users, prospective_search, memcache
+from datetime import datetime
 import time
 
 import auth
@@ -231,7 +232,7 @@ class StatsHandler(webapp.RequestHandler):
                 if datapoint.duration == "day":
                     last_seen = last_seen.replace(hour=0, minute=0, second=0,
                             microsecond=0)
-                    new_last_seen = new_last_seen.replace(hour=0, minute=0, 
+                    new_last_seen = new_last_seen.replace(hour=0, minute=0,
                             second=0, microsecond=0)
                 if last_seen < new_last_seen:
                     user.updateLastSeen(new_last_seen)
@@ -295,7 +296,8 @@ class StatsDashboard(webapp.RequestHandler):
             point_id = "%s" % hour
             if datapoint.duration == "day":
                 point_id = "total"
-            stats[datestamp]['datapoints'][datapoint.datapoint]['values'][point_id] = {
+            dp = datapoint.datapoint
+            stats[datestamp]['datapoints'][dp]['values'][point_id] = {
                     'datapoint': datapoint.datapoint,
                     'datestamp': datestamp,
                     'hour':      hour,
@@ -343,10 +345,19 @@ class PaymentNotificationHandler(webapp.RequestHandler):
             payment_data.save()
 
 
+class CheckTimeHandler(webapp.RequestHandler):
+    def get(self):
+        self.response.out.write(simplejson.dumps({
+            "code": 200,
+            "timestamp": int(time.mktime(datetime.now().timetuple())) * 1000
+        }))
+
+
 class ClearCacheHandler(webapp.RequestHandler):
     def get(self):
         memcache.flush_all()
         self.response.out.write("Cache cleared.")
+
 
 application = webapp.WSGIApplication([
         ('/', MainPage),
@@ -364,6 +375,7 @@ application = webapp.WSGIApplication([
         ('/_ah/prospective_search', StatsHandler),
         ('/payments/notification', PaymentNotificationHandler),
         ('/cache/clear', ClearCacheHandler),
+        ('/util/time', CheckTimeHandler)
         ], debug=True)
 
 
